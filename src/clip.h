@@ -1,14 +1,17 @@
 #pragma once
-#include "glm.h"
-#include <array>
+
+#include "primitives.h"
+
 #include <vector>
 
-struct ClipVertex {
-	glm::vec4 position;
-    glm::vec3 color;
+namespace renderer {
+
+struct Plane {
+	vec4 equation;
 };
 
-using ClipTriangle = std::array<ClipVertex, 3>;
+Plane nearClipPlaneInClipSpace();
+std::vector<Triangle> clipTriangleBy(const Plane& plane, const Triangle& triangle);
+std::vector<Triangle> clipTrianglesBy(const Plane& plane, const std::vector<Triangle>& triangles);
 
-std::vector<ClipTriangle> ClipTriangleNear(const ClipVertex& c0, const ClipVertex& c1,
-                                           const ClipVertex& c2);
+} // namespace renderer

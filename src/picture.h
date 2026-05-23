@@ -1,21 +1,29 @@
 #pragma once
-#include "glm.h"
+
+#include "linalg.h"
+#include "strong_alias.h"
+
 #include <vector>
+
+namespace renderer {
 
 class Picture {
 public:
-	Picture(int width, int height);
-	void Clear(const glm::vec3& color);
-	void ClearDepth();
-	void SetPixel(int x, int y, const glm::vec3& color, float depth);
-	int Width() const;
-	int Height() const;
-	const std::vector<glm::vec3>& ColorBuffer() const;
-	const std::vector<float>& DepthBuffer() const;
+	Picture(Width width, Height height);
+
+	void clear(const vec3& color);
+	void setPixel(PixelX x, PixelY y, const vec3& color, float depth);
+
+	int width() const;
+	int height() const;
+	const vec3& colorAt(PixelX x, PixelY y) const;
 
 private:
+	int pixelIndex(int x, int y) const;
+
 	int width_;
-	int height_;
-	std::vector<glm::vec3> color_;
+	std::vector<vec3> color_;
 	std::vector<float> depth_;
 };
+
+} // namespace renderer

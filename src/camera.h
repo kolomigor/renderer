@@ -1,21 +1,28 @@
 #pragma once
-#include "glm.h"
+
+#include "linalg.h"
+#include "strong_alias.h"
+
+namespace renderer {
 
 class Camera {
 public:
-	Camera(float fov, float aspect, float near, float far);
-	glm::mat4 View() const;
-	glm::mat4 Projection() const;
-	void SetPosition(const glm::vec3& pos);
-	void LookAt(const glm::vec3& target);
+	Camera(Fov fov, Aspect aspect, NearPlane near_plane, FarPlane far_plane, const vec3& position,
+	       const vec3& target);
+
+	mat4 viewMatrix() const;
+	mat4 projectionMatrix() const;
+	mat4 viewProjectionMatrix() const;
 
 private:
-	glm::vec3 pos_;
-	glm::vec3 forward_;
-	glm::vec3 up_;
-	glm::vec3 right_;
+	vec3 position_;
+	vec3 forward_;
+	vec3 right_;
+	vec3 up_;
 	float fov_;
 	float aspect_;
 	float near_;
 	float far_;
 };
+
+} // namespace renderer

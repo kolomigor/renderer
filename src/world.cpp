@@ -1,9 +1,15 @@
 #include "world.h"
 
-void World::AddTriangle(const Triangle& t) {
-	triangles_.push_back(t);
+#include <utility>
+
+namespace renderer {
+
+void World::addTriangle(Triangle triangle) {
+	triangles_.push_back(std::move(triangle));
 }
 
-const std::vector<Triangle>& World::GetTriangles() const {
+const std::vector<Triangle>& World::triangles() const {
 	return triangles_;
 }
+
+} // namespace renderer

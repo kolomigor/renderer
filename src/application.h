@@ -1,19 +1,20 @@
 #pragma once
+
 #include "camera.h"
-#include "lights.h"
-#include "picture.h"
 #include "renderer.h"
 #include "world.h"
+
+namespace renderer {
 
 class Application {
 public:
 	Application();
-	void Run();
+	void run();
 
 private:
 	World world_;
 	Camera camera_;
-	Lights lights_;
 	Renderer renderer_;
-	Picture picture_;
 };
+
+} // namespace renderer

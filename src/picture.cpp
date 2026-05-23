@@ -1,43 +1,71 @@
 #include "picture.h"
+
 #include <algorithm>
+#include <cassert>
 #include <limits>
 
-Picture::Picture(int w, int h) : width_(w), height_(h), color_(w * h), depth_(w * h) {
-	Clear({0, 0, 0});
-	ClearDepth();
+namespace renderer {
+namespace {
+
+int positiveWidth(Width width) {
+	assert(width > 0);
+	return width;
 }
 
-void Picture::Clear(const glm::vec3& color) {
+int pixelCount(Width width, Height height) {
+	assert(width > 0);
+	assert(height > 0);
+	return width * height;
+}
+
+} // namespace
+
+Picture::Picture(Width width, Height height)
+    : width_(positiveWidth(width)), color_(pixelCount(width, height)),
+      depth_(pixelCount(width, height)) {
+	clear(kBlack);
+}
+
+void Picture::clear(const vec3& color) {
 	std::fill(color_.begin(), color_.end(), color);
-}
-
-void Picture::ClearDepth() {
 	std::fill(depth_.begin(), depth_.end(), std::numeric_limits<float>::infinity());
 }
 
-void Picture::SetPixel(int x, int y, const glm::vec3& color, float depth) {
-	if (x < 0 || y < 0 || x >= width_ || y >= height_) {
-		return;
-	}
-	int index = y * width_ + x;
+void Picture::setPixel(PixelX x, PixelY y, const vec3& color, float depth) {
+	const int x_value = x;
+	const int y_value = y;
+	assert(x_value >= 0);
+	assert(y_value >= 0);
+	assert(x_value < width());
+	assert(y_value < height());
+
+	const int index = pixelIndex(x_value, y_value);
 	if (depth < depth_[index]) {
 		depth_[index] = depth;
 		color_[index] = color;
 	}
 }
 
-int Picture::Width() const {
+int Picture::width() const {
 	return width_;
 }
 
-int Picture::Height() const {
-	return height_;
+int Picture::height() const {
+	return static_cast<int>(color_.size()) / width_;
 }
 
-const std::vector<glm::vec3>& Picture::ColorBuffer() const {
-	return color_;
+const vec3& Picture::colorAt(PixelX x, PixelY y) const {
+	const int x_value = x;
+	const int y_value = y;
+	assert(x_value >= 0);
+	assert(y_value >= 0);
+	assert(x_value < width());
+	assert(y_value < height());
+	return color_[pixelIndex(x_value, y_value)];
 }
 
-const std::vector<float>& Picture::DepthBuffer() const {
-	return depth_;
+int Picture::pixelIndex(int x, int y) const {
+	return y * width_ + x;
 }
+
+} // namespace renderer

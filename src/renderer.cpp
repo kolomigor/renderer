@@ -1,44 +1,83 @@
 #include "renderer.h"
+
 #include "clip.h"
-#include "primitives.h"
 #include "rasterizer.h"
 
-static bool IsBackFaceCCW(const ScreenVertex& a, const ScreenVertex& b, const ScreenVertex& c) {
-	const float area = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
-	return area >= 0.f;
+#include <cassert>
+
+namespace renderer {
+namespace {
+
+float toScreenX(float normalized_x, int width) {
+	return (normalized_x * 0.5f + 0.5f) * static_cast<float>(width);
 }
 
-static ScreenVertex ProjectVertex(const ClipVertex& clip, int width, int height) {
-	assert(clip.position.w > 0);
-	assert(clip.position.z >= -clip.position.w);
-	const glm::vec3 ndc = glm::vec3(clip.position) / clip.position.w;
-	ScreenVertex out;
-	out.x = (ndc.x * 0.5f + 0.5f) * static_cast<float>(width);
-	out.y = (1.0f - (ndc.y * 0.5f + 0.5f)) * static_cast<float>(height);
-	out.depth = ndc.z;
-	out.color = clip.color;
-	return out;
+float toScreenY(float normalized_y, int height) {
+	return (1.0f - (normalized_y * 0.5f + 0.5f)) * static_cast<float>(height);
 }
 
-void Renderer::Render(const World& world, const Camera& camera, Picture& picture) {
-	picture.Clear({0.0f, 0.0f, 0.0f});
-	picture.ClearDepth();
-	const glm::mat4 vp = camera.Projection() * camera.View();
-	const int w = picture.Width();
-	const int h = picture.Height();
-	for (const Triangle& t : world.GetTriangles()) {
-		ClipVertex v0 = {vp * glm::vec4(t.v0.position, 1.0f), t.v0.color};
-		ClipVertex v1 = {vp * glm::vec4(t.v1.position, 1.0f), t.v1.color};
-		ClipVertex v2 = {vp * glm::vec4(t.v2.position, 1.0f), t.v2.color};
-		auto clipped_triangles = ClipTriangleNear(v0, v1, v2);
-		for (const ClipTriangle& tr : clipped_triangles) {
-			ScreenVertex c0 = ProjectVertex(tr[0], w, h);
-			ScreenVertex c1 = ProjectVertex(tr[1], w, h);
-			ScreenVertex c2 = ProjectVertex(tr[2], w, h);
-			if (IsBackFaceCCW(c0, c1, c2)) {
-				continue;
-			}
-			Rasterizer::RasterizeTriangle(c0, c1, c2, picture);
+Vertex transformVertex(const mat4& transform, const Vertex& vertex) {
+	return {transform * vertex.position, vertex.color};
+}
+
+Triangle transformTriangle(const mat4& transform, const Triangle& triangle) {
+	return {transformVertex(transform, triangle.v0), transformVertex(transform, triangle.v1),
+	        transformVertex(transform, triangle.v2)};
+}
+
+bool isBackFaceInViewSpace(const Triangle& triangle) {
+	const vec3 p0 = xyz(triangle.v0.position);
+	const vec3 p1 = xyz(triangle.v1.position);
+	const vec3 p2 = xyz(triangle.v2.position);
+	const vec3 normal = cross(p1 - p0, p2 - p0);
+	const vec3 direction_to_camera = -p0;
+	return dot(normal, direction_to_camera) <= 0.0f;
+}
+
+Vertex projectVertexToScreen(const Vertex& vertex, int width, int height) {
+	assert(vertex.position.w > 0.0f);
+	assert(vertex.position.z >= -vertex.position.w);
+
+	const vec3 normalized = xyz(vertex.position) / vertex.position.w;
+	return {{toScreenX(normalized.x, width), toScreenY(normalized.y, height), normalized.z,
+	         1.0f / vertex.position.w},
+	        vertex.color};
+}
+
+Triangle projectTriangleToScreen(const Triangle& triangle, int width, int height) {
+	return {projectVertexToScreen(triangle.v0, width, height),
+	        projectVertexToScreen(triangle.v1, width, height),
+	        projectVertexToScreen(triangle.v2, width, height)};
+}
+
+} // namespace
+
+Renderer::Renderer(Width width, Height height) : width_(width), height_(height) {
+	assert(width_ > 0);
+	assert(height_ > 0);
+}
+
+Picture Renderer::render(const World& world, const Camera& camera) const {
+	Picture picture(Width{width_}, Height{height_});
+	picture.clear(kBlack);
+
+	const mat4 view = camera.viewMatrix();
+	const mat4 view_projection = camera.viewProjectionMatrix();
+	const Plane near_plane = nearClipPlaneInClipSpace();
+	for (const Triangle& triangle : world.triangles()) {
+		const Triangle view_triangle = transformTriangle(view, triangle);
+		if (isBackFaceInViewSpace(view_triangle)) {
+			continue;
+		}
+
+		const Triangle clip_triangle = transformTriangle(view_projection, triangle);
+		for (const Triangle& clipped_triangle : clipTriangleBy(near_plane, clip_triangle)) {
+			const Triangle screen_triangle =
+			    projectTriangleToScreen(clipped_triangle, width_, height_);
+			Rasterizer::rasterizeTriangle(screen_triangle, &picture);
 		}
 	}
+	return picture;
 }
+
+} // namespace renderer

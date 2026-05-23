@@ -1,30 +1,41 @@
 #include "image_io.h"
-#include "picture.h"
 
 #include <algorithm>
+#include <cstdint>
 #include <fstream>
 
-bool SavePPM(const Picture& picture, const std::string& filename) {
+namespace renderer {
+namespace {
+
+std::uint8_t toColorChannel(float color) {
+	return static_cast<std::uint8_t>(std::clamp(color, 0.0f, 1.0f) * 255.0f);
+}
+
+void writeColorChannel(std::ostream& out, float color) {
+	out.put(static_cast<char>(toColorChannel(color)));
+}
+
+} // namespace
+
+bool savePPM(const Picture& picture, const std::filesystem::path& filename) {
 	std::ofstream out(filename, std::ios::binary);
 	if (!out) {
 		return false;
 	}
-	const int width = picture.Width();
-	const int height = picture.Height();
+	const int width = picture.width();
+	const int height = picture.height();
 	out << "P6\n";
 	out << width << " " << height << "\n";
 	out << "255\n";
-	const auto& buffer = picture.ColorBuffer();
 	for (int y = 0; y < height; ++y) {
 		for (int x = 0; x < width; ++x) {
-			const glm::vec3& c = buffer[y * width + x];
-			unsigned char r = static_cast<unsigned char>(std::clamp(c.r, 0.0f, 1.0f) * 255.0f);
-			unsigned char g = static_cast<unsigned char>(std::clamp(c.g, 0.0f, 1.0f) * 255.0f);
-			unsigned char b = static_cast<unsigned char>(std::clamp(c.b, 0.0f, 1.0f) * 255.0f);
-			out.write(reinterpret_cast<char *>(&r), 1);
-			out.write(reinterpret_cast<char *>(&g), 1);
-			out.write(reinterpret_cast<char *>(&b), 1);
+			const vec3& color = picture.colorAt(PixelX{x}, PixelY{y});
+			writeColorChannel(out, color.r);
+			writeColorChannel(out, color.g);
+			writeColorChannel(out, color.b);
 		}
 	}
 	return true;
 }
+
+} // namespace renderer

@@ -1,6 +1,13 @@
 #include "application.h"
+#include "except.h"
 
 int main() {
-	Application app;
-	app.Run();
+	try {
+		renderer::Application app;
+		app.run();
+	} catch (...) {
+		renderer::reactToException();
+		return 1;
+	}
+	return 0;
 }

@@ -1,9 +1,12 @@
 #pragma once
-#include "glm.h"
+
+#include "linalg.h"
+
+namespace renderer {
 
 struct Vertex {
-	glm::vec3 position;
-	glm::vec3 color;
+	vec4 position;
+	vec3 color;
 };
 
 struct Triangle {
@@ -11,3 +14,9 @@ struct Triangle {
 	Vertex v1;
 	Vertex v2;
 };
+
+inline Vertex makeVertex(const vec3& position, const vec3& color) {
+	return {point(position), color};
+}
+
+} // namespace renderer

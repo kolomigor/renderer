@@ -2,6 +2,6 @@
 
 namespace renderer {
 
-class Lights {};
+void reactToException();
 
 } // namespace renderer

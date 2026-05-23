@@ -30,6 +30,7 @@ add_executable(renderer
     src/image_io.cpp
     src/clip.cpp
     src/rasterizer.cpp
+    src/except.cpp
 )
 
 target_link_libraries(renderer PRIVATE glm::glm)

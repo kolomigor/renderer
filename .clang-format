@@ -6,3 +6,4 @@ AccessModifierOffset: -4
 ReferenceAlignment: Left
 AllowShortFunctionsOnASingleLine: None
 ColumnLimit: 100
+InsertNewlineAtEOF: true
