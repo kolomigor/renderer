@@ -1,15 +1,11 @@
 #include "image_io.h"
 
-#include <algorithm>
-#include <cstdint>
+#include "color.h"
+
 #include <fstream>
 
 namespace renderer {
 namespace {
-
-std::uint8_t toColorChannel(float color) {
-	return static_cast<std::uint8_t>(std::clamp(color, 0.0f, 1.0f) * 255.0f);
-}
 
 void writeColorChannel(std::ostream& out, float color) {
 	out.put(static_cast<char>(toColorChannel(color)));

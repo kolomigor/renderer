@@ -11,6 +11,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include(FetchContent)
+include(CTest)
 
 FetchContent_Declare(
     glm
@@ -18,7 +19,47 @@ FetchContent_Declare(
     GIT_TAG master
 )
 
-FetchContent_MakeAvailable(glm)
+set(SDL_SHARED OFF CACHE BOOL "" FORCE)
+set(SDL_STATIC ON CACHE BOOL "" FORCE)
+set(SDL_TEST OFF CACHE BOOL "" FORCE)
+set(SDL2_DISABLE_SDL2MAIN ON CACHE BOOL "" FORCE)
+FetchContent_Declare(
+    SDL2
+    GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
+    GIT_TAG release-2.32.10
+)
+
+set(JSON_BuildTests OFF CACHE INTERNAL "")
+FetchContent_Declare(
+    nlohmann_json
+    GIT_REPOSITORY https://github.com/nlohmann/json.git
+    GIT_TAG v3.11.3
+)
+
+set(TINYOBJLOADER_BUILD_TEST_LOADER OFF CACHE BOOL "" FORCE)
+FetchContent_Declare(
+    tinyobjloader
+    GIT_REPOSITORY https://github.com/tinyobjloader/tinyobjloader.git
+    GIT_TAG v2.0.0rc13
+)
+
+FetchContent_MakeAvailable(glm SDL2 nlohmann_json tinyobjloader)
+
+if(TARGET SDL2::SDL2-static)
+    set(SDL2_TARGET SDL2::SDL2-static)
+elseif(TARGET SDL2::SDL2)
+    set(SDL2_TARGET SDL2::SDL2)
+else()
+    message(FATAL_ERROR "SDL2 target was not created")
+endif()
+
+if(TARGET tinyobjloader)
+    set(TINYOBJLOADER_TARGET tinyobjloader)
+elseif(TARGET tinyobjloader::tinyobjloader)
+    set(TINYOBJLOADER_TARGET tinyobjloader::tinyobjloader)
+else()
+    message(FATAL_ERROR "tinyobjloader target was not created")
+endif()
 
 add_executable(renderer
     src/main.cpp
@@ -31,6 +72,28 @@ add_executable(renderer
     src/clip.cpp
     src/rasterizer.cpp
     src/except.cpp
+    src/lights.cpp
+    src/mesh.cpp
+    src/scene.cpp
+    src/window.cpp
 )
 
-target_link_libraries(renderer PRIVATE glm::glm)
+target_link_libraries(renderer PRIVATE
+    glm::glm
+    nlohmann_json::nlohmann_json
+    ${SDL2_TARGET}
+    ${TINYOBJLOADER_TARGET}
+)
+
+add_executable(renderer_tests
+    tests/renderer_tests.cpp
+    src/camera.cpp
+    src/clip.cpp
+    src/picture.cpp
+    src/rasterizer.cpp
+)
+
+target_include_directories(renderer_tests PRIVATE src)
+target_link_libraries(renderer_tests PRIVATE glm::glm)
+
+add_test(NAME renderer_tests COMMAND renderer_tests)

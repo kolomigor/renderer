@@ -1,8 +1,7 @@
 #pragma once
 
-#include "camera.h"
 #include "renderer.h"
-#include "world.h"
+#include "scene.h"
 
 namespace renderer {
 
@@ -12,8 +11,7 @@ public:
 	void run();
 
 private:
-	World world_;
-	Camera camera_;
+	Scene scene_;
 	Renderer renderer_;
 };
 

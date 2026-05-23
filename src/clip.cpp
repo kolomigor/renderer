@@ -3,6 +3,13 @@
 namespace renderer {
 namespace {
 
+constexpr Plane kLeftClipPlane{{1.0f, 0.0f, 0.0f, 1.0f}};
+constexpr Plane kRightClipPlane{{-1.0f, 0.0f, 0.0f, 1.0f}};
+constexpr Plane kBottomClipPlane{{0.0f, 1.0f, 0.0f, 1.0f}};
+constexpr Plane kTopClipPlane{{0.0f, -1.0f, 0.0f, 1.0f}};
+constexpr Plane kNearClipPlane{{0.0f, 0.0f, 1.0f, 1.0f}};
+constexpr Plane kFarClipPlane{{0.0f, 0.0f, -1.0f, 1.0f}};
+
 float signedDistance(const Plane& plane, const Vertex& vertex) {
 	return dot(plane.equation, vertex.position);
 }
@@ -45,25 +52,27 @@ std::vector<Vertex> clipPolygonBy(const Plane& plane, const std::vector<Vertex>&
 	return clipped;
 }
 
-std::vector<Triangle> triangulate(const std::vector<Vertex>& vertices) {
+std::vector<Triangle> triangulate(const std::vector<Vertex>& vertices, Material material) {
 	std::vector<Triangle> triangles;
 	if (vertices.size() < 3) {
 		return triangles;
 	}
 	for (std::size_t index = 1; index + 1 < vertices.size(); ++index) {
-		triangles.push_back({vertices[0], vertices[index], vertices[index + 1]});
+		triangles.push_back({vertices[0], vertices[index], vertices[index + 1], material});
 	}
 	return triangles;
 }
 
 } // namespace
 
-Plane nearClipPlaneInClipSpace() {
-	return {{0.0f, 0.0f, 1.0f, 1.0f}};
+std::array<Plane, 6> frustumClipPlanesInClipSpace() {
+	return {kLeftClipPlane, kRightClipPlane, kBottomClipPlane,
+	        kTopClipPlane,  kNearClipPlane,  kFarClipPlane};
 }
 
 std::vector<Triangle> clipTriangleBy(const Plane& plane, const Triangle& triangle) {
-	return triangulate(clipPolygonBy(plane, {triangle.v0, triangle.v1, triangle.v2}));
+	return triangulate(clipPolygonBy(plane, {triangle.v0, triangle.v1, triangle.v2}),
+	                   triangle.material);
 }
 
 std::vector<Triangle> clipTrianglesBy(const Plane& plane, const std::vector<Triangle>& triangles) {
@@ -71,6 +80,17 @@ std::vector<Triangle> clipTrianglesBy(const Plane& plane, const std::vector<Tria
 	for (const Triangle& triangle : triangles) {
 		std::vector<Triangle> parts = clipTriangleBy(plane, triangle);
 		clipped.insert(clipped.end(), parts.begin(), parts.end());
+	}
+	return clipped;
+}
+
+std::vector<Triangle> clipTriangleByFrustum(const Triangle& triangle) {
+	std::vector<Triangle> clipped{triangle};
+	for (const Plane& plane : frustumClipPlanesInClipSpace()) {
+		clipped = clipTrianglesBy(plane, clipped);
+		if (clipped.empty()) {
+			break;
+		}
 	}
 	return clipped;
 }
