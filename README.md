@@ -1,50 +1,46 @@
 # Renderer
 
-A small CPU software renderer with an SDL window, JSON scene loading, textured OBJ mesh loading,
-perspective projection, frustum clipping, back-face culling, unlit material rendering, and a
-depth buffer.
+Небольшой программный CPU-рендерер с окном SDL, загрузкой сцен из JSON, загрузкой текстурированных OBJ-моделей, перспективной проекцией, отсечением по пирамиде видимости, отсечением невидимых граней, рендерингом материалов без освещения и буфером глубины.
 
-## Build
+## Сборка
 
 ```sh
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
 
-If `CMAKE_BUILD_TYPE` is not set, the project defaults to `Release` for single-config
-generators.
+Если `CMAKE_BUILD_TYPE` не задан, проект по умолчанию использует `Release` для одноконфигурационных генераторов.
 
-## Run
+## Запуск
 
-From the project root:
+Из корня проекта:
 
 ```sh
 ./build/renderer
 ```
 
-The default scene is resolved from the current directory or from the executable location, so
-this also works from another directory:
+Сцена по умолчанию ищется относительно текущей директории или относительно расположения исполняемого файла, поэтому это также работает из другой директории:
 
 ```sh
 /Users/kolomigor/renderer/build/renderer
 ```
 
-Use an explicit frame limit:
+Использовать явное ограничение FPS:
 
 ```sh
 ./build/renderer --fps 60
 ./build/renderer --fps 120
 ```
 
-Load a custom scene:
+Загрузить пользовательскую сцену:
 
 ```sh
 ./build/renderer --scene assets/scenes/default.json
 ```
 
-## Textures
+## Текстуры
 
-Materials can reference ASCII or binary PPM textures with a `texture` field:
+Материалы могут ссылаться на ASCII- или бинарные PPM-текстуры через поле `texture`:
 
 ```json
 {
@@ -57,26 +53,27 @@ Materials can reference ASCII or binary PPM textures with a `texture` field:
 }
 ```
 
-OBJ meshes should provide `vt` texture coordinates and face indices such as `f 1/1 2/2 3/3`.
-Texture paths are resolved relative to the scene JSON file.
+OBJ-модели должны содержать текстурные координаты `vt` и индексы граней вида `f 1/1 2/2 3/3`.
 
-Show command-line help:
+Пути к текстурам разрешаются относительно JSON-файла сцены.
+
+Показать справку по аргументам командной строки:
 
 ```sh
 ./build/renderer --help
 ```
 
-## Controls
+## Управление
 
-- `W/A/S/D`: move camera horizontally
-- `Space` or `E`: move up
-- `Ctrl` or `Q`: move down
-- `Shift`: move faster
-- Arrow keys: turn camera
-- Right mouse button + move mouse: look around
-- `Esc`: quit
+- `W/A/S/D`: перемещение камеры по горизонтали
+- `Space` или `E`: движение вверх
+- `Ctrl` или `Q`: движение вниз
+- `Shift`: двигаться быстрее
+- Стрелки: поворот камеры
+- Правая кнопка мыши + движение мыши: осмотр вокруг
+- `Esc`: выйти
 
-## Test
+## Тесты
 
 ```sh
 ctest --test-dir build --output-on-failure
