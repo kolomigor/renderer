@@ -9,49 +9,31 @@
   "lights": {
     "ambient": {
       "color": [1.0, 1.0, 1.0],
-      "intensity": 0.85
+      "intensity": 0.0
     },
-    "directional": [
-      {
-        "directionToLight": [0.35, 0.75, 1.0],
-        "color": [1.0, 0.95, 0.88],
-        "intensity": 1.0
-      },
-      {
-        "directionToLight": [-0.8, 0.25, 0.2],
-        "color": [0.5, 0.6, 1.0],
-        "intensity": 0.35
-      }
-    ]
+    "directional": []
   },
   "materials": {
     "ruby": {
       "albedo": [1.0, 0.05, 0.04],
       "ambient": 0.32,
-      "diffuse": 0.9,
-      "specular": 0.35,
+      "diffuse": 0.7,
+      "specular": 0.18,
       "shininess": 40.0
     },
     "gold": {
       "albedo": [1.0, 0.72, 0.22],
       "ambient": 0.35,
-      "diffuse": 0.85,
-      "specular": 0.55,
+      "diffuse": 0.68,
+      "specular": 0.28,
       "shininess": 64.0
     },
     "teal": {
       "albedo": [0.05, 0.8, 0.78],
       "ambient": 0.35,
-      "diffuse": 0.85,
-      "specular": 0.25,
+      "diffuse": 0.7,
+      "specular": 0.12,
       "shininess": 28.0
-    },
-    "floor": {
-      "albedo": [0.55, 0.58, 0.62],
-      "ambient": 0.55,
-      "diffuse": 0.65,
-      "specular": 0.05,
-      "shininess": 8.0
     }
   },
   "meshes": [
@@ -80,14 +62,6 @@
         "translate": [0.15, 0.05, -7.4],
         "rotate": [0.0, -18.0, 0.0],
         "scale": [0.6, 0.6, 0.6]
-      }
-    },
-    {
-      "path": "../models/ground.obj",
-      "material": "floor",
-      "transform": {
-        "translate": [0.0, -1.1, -6.2],
-        "scale": [4.2, 1.0, 3.2]
       }
     }
   ]

@@ -1,10 +1,12 @@
 #include "scene.h"
 
 #include "mesh.h"
+#include "texture.h"
 
 #include <nlohmann/json.hpp>
 
 #include <fstream>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
@@ -49,24 +51,31 @@ vec3 readVec3(const Json& object, const std::string& key, const vec3& fallback) 
 	return {value[0].get<float>(), value[1].get<float>(), value[2].get<float>()};
 }
 
-Material readMaterial(const Json& object) {
+Material readMaterial(const Json& object, const std::filesystem::path& scene_path) {
 	Material material = defaultMaterial();
 	material.albedo = readVec3(object, "albedo", material.albedo);
 	material.ambient = readFloat(object, "ambient", material.ambient);
 	material.diffuse = readFloat(object, "diffuse", material.diffuse);
 	material.specular = readFloat(object, "specular", material.specular);
 	material.shininess = readFloat(object, "shininess", material.shininess);
+	material.emission = readVec3(object, "emission", material.emission);
+	if (object.contains("texture")) {
+		const std::filesystem::path texture_path =
+		    resolvePath(scene_path, object.at("texture").get<std::string>());
+		material.texture = std::make_shared<Texture>(loadPPMTexture(texture_path));
+	}
 	return material;
 }
 
-std::unordered_map<std::string, Material> readMaterials(const Json& root) {
+std::unordered_map<std::string, Material> readMaterials(const Json& root,
+                                                       const std::filesystem::path& scene_path) {
 	std::unordered_map<std::string, Material> materials;
 	materials.emplace("default", defaultMaterial());
 	if (!root.contains("materials")) {
 		return materials;
 	}
 	for (const auto& [name, config] : root.at("materials").items()) {
-		materials[name] = readMaterial(config);
+		materials[name] = readMaterial(config, scene_path);
 	}
 	return materials;
 }
@@ -116,6 +125,15 @@ Lights readLights(const Json& root) {
 		                            readVec3(light, "color", {1.0f, 1.0f, 1.0f}),
 		                            readFloat(light, "intensity", 1.0f)});
 	}
+	if (lights_config.contains("point")) {
+		for (const Json& light : lights_config.at("point")) {
+			lights.addPointLight({readVec3(light, "position", {0.0f, 0.0f, 0.0f}),
+			                      readVec3(light, "color", {1.0f, 1.0f, 1.0f}),
+			                      readFloat(light, "intensity", 1.0f),
+			                      readFloat(light, "linearAttenuation", 0.09f),
+			                      readFloat(light, "quadraticAttenuation", 0.032f)});
+		}
+	}
 	return lights;
 }
 
@@ -146,7 +164,7 @@ Json loadJson(const std::filesystem::path& filename) {
 
 Scene loadScene(const std::filesystem::path& filename, Width width, Height height) {
 	const Json root = loadJson(filename);
-	const std::unordered_map<std::string, Material> materials = readMaterials(root);
+	const std::unordered_map<std::string, Material> materials = readMaterials(root, filename);
 	return {readWorld(root, filename, materials), readCamera(root, width, height),
 	        readLights(root)};
 }

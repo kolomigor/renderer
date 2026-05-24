@@ -28,6 +28,13 @@ void Lights::addDirectionalLight(DirectionalLight light) {
 	directional_lights_.push_back(normalizedLight(light));
 }
 
+void Lights::addPointLight(PointLight light) {
+	assert(light.intensity >= 0.0f);
+	assert(light.linear_attenuation >= 0.0f);
+	assert(light.quadratic_attenuation >= 0.0f);
+	point_lights_.push_back(light);
+}
+
 const vec3& Lights::ambientColor() const {
 	return ambient_color_;
 }
@@ -38,6 +45,10 @@ float Lights::ambientIntensity() const {
 
 const std::vector<DirectionalLight>& Lights::directionalLights() const {
 	return directional_lights_;
+}
+
+const std::vector<PointLight>& Lights::pointLights() const {
+	return point_lights_;
 }
 
 } // namespace renderer

@@ -7,6 +7,11 @@ project(renderer
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+if(NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the build type." FORCE)
+    set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS Debug Release RelWithDebInfo MinSizeRel)
+endif()
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -69,6 +74,7 @@ add_executable(renderer
     src/picture.cpp
     src/renderer.cpp
     src/image_io.cpp
+    src/texture.cpp
     src/clip.cpp
     src/rasterizer.cpp
     src/except.cpp
@@ -89,8 +95,12 @@ add_executable(renderer_tests
     tests/renderer_tests.cpp
     src/camera.cpp
     src/clip.cpp
+    src/lights.cpp
     src/picture.cpp
     src/rasterizer.cpp
+    src/renderer.cpp
+    src/texture.cpp
+    src/world.cpp
 )
 
 target_include_directories(renderer_tests PRIVATE src)

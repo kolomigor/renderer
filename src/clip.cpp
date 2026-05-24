@@ -22,6 +22,9 @@ Vertex interpolate(const Vertex& a, const Vertex& b, float t) {
 	Vertex out;
 	out.position = a.position + t * (b.position - a.position);
 	out.color = a.color + t * (b.color - a.color);
+	out.texcoord = a.texcoord + t * (b.texcoord - a.texcoord);
+	out.world_position = a.world_position + t * (b.world_position - a.world_position);
+	out.normal = a.normal + t * (b.normal - a.normal);
 	return out;
 }
 

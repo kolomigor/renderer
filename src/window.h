@@ -23,7 +23,7 @@ struct FrameInput {
 
 class Window {
 public:
-	Window(Width width, Height height, std::string title);
+	Window(Width width, Height height, std::string title, bool use_vsync);
 	~Window();
 
 	Window(const Window&) = delete;
@@ -32,6 +32,7 @@ public:
 	bool isOpen() const;
 	FrameInput pollEvents();
 	void show(const Picture& picture);
+	void setTitle(const std::string& title);
 
 private:
 	void close();

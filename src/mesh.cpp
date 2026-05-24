@@ -26,13 +26,38 @@ vec3 readPosition(const tinyobj::attrib_t& attributes, const tinyobj::index_t& i
 	        attributes.vertices[position_index + 2]};
 }
 
+vec2 readTexcoord(const tinyobj::attrib_t& attributes, const tinyobj::index_t& index,
+                  const std::filesystem::path& filename) {
+	if (index.texcoord_index < 0) {
+		return {0.0f, 0.0f};
+	}
+	const std::size_t texcoord_index = static_cast<std::size_t>(index.texcoord_index) * 2;
+	if (texcoord_index + 1 >= attributes.texcoords.size()) {
+		throw std::runtime_error("texture coordinate index is out of bounds in OBJ file: " +
+		                         filename.string());
+	}
+	return {attributes.texcoords[texcoord_index], attributes.texcoords[texcoord_index + 1]};
+}
+
+Vertex makeMeshVertex(const vec3& position, const vec2& texcoord, const Material& material,
+                      const vec3& normal) {
+	return makeVertex(position, material.albedo, texcoord, normal);
+}
+
 void addTriangle(Mesh *mesh, const mat4& transform, const tinyobj::attrib_t& attributes,
                  const tinyobj::index_t& a, const tinyobj::index_t& b, const tinyobj::index_t& c,
                  Material material, const std::filesystem::path& filename) {
 	const vec3 p0 = transformedPosition(transform, readPosition(attributes, a, filename));
 	const vec3 p1 = transformedPosition(transform, readPosition(attributes, b, filename));
 	const vec3 p2 = transformedPosition(transform, readPosition(attributes, c, filename));
-	mesh->triangles.push_back(makeTriangle(p0, p1, p2, material));
+	const vec3 normal = triangleNormal(p0, p1, p2);
+	mesh->triangles.push_back({makeMeshVertex(p0, readTexcoord(attributes, a, filename), material,
+	                                          normal),
+	                           makeMeshVertex(p1, readTexcoord(attributes, b, filename), material,
+	                                          normal),
+	                           makeMeshVertex(p2, readTexcoord(attributes, c, filename), material,
+	                                          normal),
+	                           material});
 }
 
 } // namespace

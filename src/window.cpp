@@ -27,9 +27,10 @@ template <class T> T *checkSdlPointer(T *pointer, const std::string& operation) 
 	return pointer;
 }
 
-SDL_Renderer *createRenderer(SDL_Window *window) {
-	SDL_Renderer *renderer =
-	    SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+SDL_Renderer *createRenderer(SDL_Window *window, bool use_vsync) {
+	const std::uint32_t flags =
+	    SDL_RENDERER_ACCELERATED | (use_vsync ? SDL_RENDERER_PRESENTVSYNC : 0);
+	SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, flags);
 	if (renderer != nullptr) {
 		return renderer;
 	}
@@ -47,7 +48,7 @@ float keyAxis(bool positive, bool negative) {
 
 } // namespace
 
-Window::Window(Width width, Height height, std::string title)
+Window::Window(Width width, Height height, std::string title, bool use_vsync)
     : width_(width), height_(height), window_(nullptr), renderer_(nullptr), texture_(nullptr),
       pixels_(width_ * height_ * kColorChannels), is_open_(true) {
 	assert(width_ > 0);
@@ -62,7 +63,7 @@ Window::Window(Width width, Height height, std::string title)
 		                                           SDL_WINDOWPOS_CENTERED, width_, height_,
 		                                           SDL_WINDOW_RESIZABLE),
 		                          "failed to create SDL window");
-		renderer_ = createRenderer(window_);
+		renderer_ = createRenderer(window_, use_vsync);
 		texture_ = checkSdlPointer(SDL_CreateTexture(renderer_, SDL_PIXELFORMAT_RGB24,
 		                                             SDL_TEXTUREACCESS_STREAMING, width_, height_),
 		                           "failed to create SDL texture");
@@ -134,6 +135,10 @@ void Window::show(const Picture& picture) {
 		throwSdlError("failed to copy SDL texture");
 	}
 	SDL_RenderPresent(renderer_);
+}
+
+void Window::setTitle(const std::string& title) {
+	SDL_SetWindowTitle(window_, title.c_str());
 }
 
 void Window::close() {

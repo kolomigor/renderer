@@ -2,10 +2,13 @@
 #include "clip.h"
 #include "picture.h"
 #include "rasterizer.h"
+#include "renderer.h"
+#include "texture.h"
 
 #include <cmath>
 #include <exception>
 #include <iostream>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -18,8 +21,9 @@ renderer::Material testMaterial() {
 	return {{1.0f, 1.0f, 1.0f}, 0.0f, 1.0f, 0.0f, 1.0f};
 }
 
-renderer::Vertex vertex(renderer::vec4 position, renderer::vec3 color = {1.0f, 1.0f, 1.0f}) {
-	return {position, color};
+renderer::Vertex vertex(renderer::vec4 position, renderer::vec3 color = {1.0f, 1.0f, 1.0f},
+                        renderer::vec2 texcoord = {0.0f, 0.0f}) {
+	return {position, color, texcoord, renderer::xyz(position), {0.0f, 0.0f, 1.0f}};
 }
 
 renderer::Triangle triangle(renderer::Vertex a, renderer::Vertex b, renderer::Vertex c) {
@@ -48,6 +52,32 @@ void expectVec3Near(const renderer::vec3& actual, const renderer::vec3& expected
 	expectNear(actual.x, expected.x, message + ".x");
 	expectNear(actual.y, expected.y, message + ".y");
 	expectNear(actual.z, expected.z, message + ".z");
+}
+
+bool hasNonBlackPixel(const renderer::Picture& picture) {
+	for (int y = 0; y < picture.height(); ++y) {
+		for (int x = 0; x < picture.width(); ++x) {
+			const renderer::vec3& color =
+			    picture.colorAt(renderer::PixelX{x}, renderer::PixelY{y});
+			if (color.r > kEpsilon || color.g > kEpsilon || color.b > kEpsilon) {
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+bool hasBluishPixel(const renderer::Picture& picture) {
+	for (int y = 0; y < picture.height(); ++y) {
+		for (int x = 0; x < picture.width(); ++x) {
+			const renderer::vec3& color =
+			    picture.colorAt(renderer::PixelX{x}, renderer::PixelY{y});
+			if (color.b > color.r + kEpsilon && color.b > color.g + kEpsilon) {
+				return true;
+			}
+		}
+	}
+	return false;
 }
 
 bool isInsideClipVolume(const renderer::Vertex& v) {
@@ -127,6 +157,42 @@ void testRasterizerDepthTestKeepsNearestPixel() {
 	               "nearer triangle should overwrite farther triangle");
 }
 
+void testRasterizerInterpolatesDepthLinearly() {
+	renderer::Picture picture(renderer::Width{10}, renderer::Height{10});
+	const renderer::Triangle constant_depth_triangle =
+	    triangle(vertex({0.0f, 0.0f, 0.5f, 1.0f}, {0.0f, 1.0f, 0.0f}),
+	             vertex({9.0f, 0.0f, 0.5f, 1.0f}, {0.0f, 1.0f, 0.0f}),
+	             vertex({0.0f, 9.0f, 0.5f, 1.0f}, {0.0f, 1.0f, 0.0f}));
+	const renderer::Triangle varying_depth_triangle =
+	    triangle(vertex({0.0f, 0.0f, 0.1f, 10.0f}, {1.0f, 0.0f, 0.0f}),
+	             vertex({9.0f, 0.0f, 0.9f, 1.0f}, {1.0f, 0.0f, 0.0f}),
+	             vertex({0.0f, 9.0f, 0.9f, 1.0f}, {1.0f, 0.0f, 0.0f}));
+
+	renderer::Rasterizer::rasterizeTriangle(constant_depth_triangle, &picture);
+	renderer::Rasterizer::rasterizeTriangle(varying_depth_triangle, &picture);
+
+	expectVec3Near(picture.colorAt(renderer::PixelX{2}, renderer::PixelY{2}), {0.0f, 1.0f, 0.0f},
+	               "depth should be interpolated linearly in screen space");
+}
+
+void testRasterizerSamplesTexture() {
+	renderer::Picture picture(renderer::Width{10}, renderer::Height{10});
+	renderer::Material material = testMaterial();
+	material.texture = std::make_shared<renderer::Texture>(
+	    2, 2, std::vector<renderer::vec3>{{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f},
+	                                      {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f, 1.0f}});
+	const renderer::Triangle input{
+	    vertex({1.0f, 1.0f, 0.5f, 1.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}),
+	    vertex({8.0f, 1.0f, 0.5f, 1.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}),
+	    vertex({1.0f, 8.0f, 0.5f, 1.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}),
+	    material};
+
+	renderer::Rasterizer::rasterizeTriangle(input, &picture);
+
+	expectVec3Near(picture.colorAt(renderer::PixelX{2}, renderer::PixelY{2}), {0.0f, 0.0f, 1.0f},
+	               "textured triangle should sample its material texture");
+}
+
 void testCameraProjectionMapsTargetToCenter() {
 	const renderer::Camera camera(renderer::Fov{60.0f}, renderer::Aspect{1.0f},
 	                              renderer::NearPlane{0.1f}, renderer::FarPlane{100.0f},
@@ -159,6 +225,63 @@ void testCameraProjectionRespondsToAspect() {
 	           "wider aspect should reduce horizontal NDC magnitude");
 }
 
+void testCameraMoveKeepsForwardPointCentered() {
+	renderer::Camera camera(renderer::Fov{60.0f}, renderer::Aspect{1.0f},
+	                        renderer::NearPlane{0.1f}, renderer::FarPlane{100.0f},
+	                        {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, -1.0f});
+
+	camera.moveLocal({0.0f, 0.0f, 1.0f});
+	const renderer::vec4 clip_position =
+	    camera.viewProjectionMatrix() * renderer::point({0.0f, 0.0f, -5.0f});
+	const renderer::vec3 ndc = renderer::xyz(clip_position) / clip_position.w;
+
+	expectNear(ndc.x, 0.0f, "forward point should remain horizontally centered after camera move");
+	expectNear(ndc.y, 0.0f, "forward point should remain vertically centered after camera move");
+}
+
+void testRendererCullsBackFaces() {
+	const renderer::Material material{{1.0f, 0.0f, 0.0f}, 1.0f, 0.0f, 0.0f, 1.0f};
+	const renderer::Camera camera(renderer::Fov{60.0f}, renderer::Aspect{1.0f},
+	                              renderer::NearPlane{0.1f}, renderer::FarPlane{100.0f},
+	                              {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, -1.0f});
+	const renderer::Lights lights({1.0f, 1.0f, 1.0f}, 1.0f);
+	const renderer::Renderer software_renderer(renderer::Width{20}, renderer::Height{20});
+
+	renderer::World front_world;
+	front_world.addTriangle(renderer::makeTriangle({-0.8f, -0.8f, -3.0f},
+	                                               {0.8f, -0.8f, -3.0f},
+	                                               {0.0f, 0.8f, -3.0f}, material));
+	const renderer::Picture front_picture = software_renderer.render(front_world, camera, lights);
+	expectTrue(hasNonBlackPixel(front_picture), "front-facing triangle should be rendered");
+
+	renderer::World back_world;
+	back_world.addTriangle(renderer::makeTriangle({-0.8f, -0.8f, -3.0f},
+	                                              {0.0f, 0.8f, -3.0f},
+	                                              {0.8f, -0.8f, -3.0f}, material));
+	const renderer::Picture back_picture = software_renderer.render(back_world, camera, lights);
+	expectTrue(!hasNonBlackPixel(back_picture), "back-facing triangle should be culled");
+}
+
+void testRendererPreservesMaterialTexture() {
+	renderer::Material material{{1.0f, 1.0f, 1.0f}, 1.0f, 0.0f, 0.0f, 1.0f};
+	material.texture = std::make_shared<renderer::Texture>(
+	    1, 1, std::vector<renderer::vec3>{{0.0f, 0.0f, 1.0f}});
+	const renderer::Camera camera(renderer::Fov{60.0f}, renderer::Aspect{1.0f},
+	                              renderer::NearPlane{0.1f}, renderer::FarPlane{100.0f},
+	                              {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, -1.0f});
+	const renderer::Lights lights({1.0f, 1.0f, 1.0f}, 1.0f);
+	const renderer::Renderer software_renderer(renderer::Width{20}, renderer::Height{20});
+
+	renderer::World world;
+	world.addTriangle(renderer::makeTriangle({-0.8f, -0.8f, -3.0f},
+	                                         {0.8f, -0.8f, -3.0f},
+	                                         {0.0f, 0.8f, -3.0f}, material));
+
+	const renderer::Picture picture = software_renderer.render(world, camera, lights);
+	expectTrue(hasBluishPixel(picture),
+	           "renderer should preserve material texture through projection");
+}
+
 using Test = void (*)();
 
 void runTest(const std::string& name, Test test) {
@@ -177,8 +300,15 @@ int main() {
 		runTest("rasterizer writes pixels", testRasterizerWritesPixels);
 		runTest("rasterizer depth test keeps nearest pixel",
 		        testRasterizerDepthTestKeepsNearestPixel);
+		runTest("rasterizer interpolates depth linearly",
+		        testRasterizerInterpolatesDepthLinearly);
+		runTest("rasterizer samples texture", testRasterizerSamplesTexture);
 		runTest("camera projection maps target to center", testCameraProjectionMapsTargetToCenter);
 		runTest("camera projection responds to aspect", testCameraProjectionRespondsToAspect);
+		runTest("camera move keeps forward point centered",
+		        testCameraMoveKeepsForwardPointCentered);
+		runTest("renderer culls back faces", testRendererCullsBackFaces);
+		runTest("renderer preserves material texture", testRendererPreservesMaterialTexture);
 	} catch (const std::exception& exception) {
 		std::cerr << "[FAIL] " << exception.what() << '\n';
 		return 1;
