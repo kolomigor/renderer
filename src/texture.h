@@ -23,6 +23,6 @@ private:
 	std::vector<vec3> pixels_;
 };
 
-Texture loadPPMTexture(const std::filesystem::path& filename);
+Texture loadTexture(const std::filesystem::path& filename);
 
 } // namespace renderer

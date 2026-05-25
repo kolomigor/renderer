@@ -1,0 +1,296 @@
+{
+  "camera": {
+    "position": [5.8, 3.4, 1.4],
+    "target": [0.0, -0.2, -9.0],
+    "fov": 68.0,
+    "near": 0.1,
+    "far": 120.0
+  },
+  "lights": {
+    "ambient": {
+      "color": [1.0, 1.0, 1.0],
+      "intensity": 0.08
+    },
+    "directional": [
+      {
+        "directionToLight": [-0.45, 0.9, 0.35],
+        "color": [1.0, 0.96, 0.9],
+        "intensity": 0.95
+      },
+      {
+        "directionToLight": [0.65, 0.35, -0.15],
+        "color": [0.48, 0.68, 1.0],
+        "intensity": 0.28
+      }
+    ],
+    "point": [
+      {
+        "position": [-2.8, 2.3, -5.5],
+        "color": [1.0, 0.45, 0.35],
+        "intensity": 1.4,
+        "linearAttenuation": 0.12,
+        "quadraticAttenuation": 0.035
+      },
+      {
+        "position": [3.2, 2.1, -9.0],
+        "color": [0.35, 0.65, 1.0],
+        "intensity": 1.2,
+        "linearAttenuation": 0.11,
+        "quadraticAttenuation": 0.032
+      }
+    ]
+  },
+  "materials": {
+    "floor": {
+      "albedo": [0.82, 0.82, 0.78],
+      "ambient": 0.24,
+      "diffuse": 0.72,
+      "specular": 0.08,
+      "shininess": 16.0
+    },
+    "ruby": {
+      "albedo": [0.95, 0.08, 0.06],
+      "ambient": 0.2,
+      "diffuse": 0.78,
+      "specular": 0.32,
+      "shininess": 48.0
+    },
+    "gold": {
+      "albedo": [1.0, 0.7, 0.18],
+      "ambient": 0.22,
+      "diffuse": 0.72,
+      "specular": 0.42,
+      "shininess": 70.0
+    },
+    "teal": {
+      "albedo": [0.05, 0.78, 0.72],
+      "ambient": 0.2,
+      "diffuse": 0.78,
+      "specular": 0.22,
+      "shininess": 32.0
+    },
+    "violet": {
+      "albedo": [0.5, 0.22, 0.92],
+      "ambient": 0.18,
+      "diffuse": 0.8,
+      "specular": 0.25,
+      "shininess": 42.0
+    },
+    "green": {
+      "albedo": [0.18, 0.82, 0.32],
+      "ambient": 0.2,
+      "diffuse": 0.76,
+      "specular": 0.18,
+      "shininess": 28.0
+    }
+  },
+  "meshes": [
+    {
+      "path": "../models/cube.obj",
+      "material": "floor",
+      "transform": {
+        "translate": [0.0, -1.35, -9.0],
+        "rotate": [0.0, 0.0, 0.0],
+        "scale": [7.5, 0.08, 5.0]
+      }
+    },
+    {
+      "path": "../models/cube.obj",
+      "material": "ruby",
+      "transform": {
+        "translate": [-3.0, -0.65, -5.2],
+        "rotate": [0.0, 18.0, 0.0],
+        "scale": [0.42, 0.72, 0.42]
+      }
+    },
+    {
+      "path": "../models/pyramid.obj",
+      "material": "gold",
+      "transform": {
+        "translate": [-2.15, -0.72, -5.65],
+        "rotate": [0.0, -32.0, 0.0],
+        "scale": [0.58, 0.58, 0.58]
+      }
+    },
+    {
+      "path": "../models/cube.obj",
+      "material": "teal",
+      "transform": {
+        "translate": [-1.25, -0.5, -6.1],
+        "rotate": [0.0, 46.0, 0.0],
+        "scale": [0.5, 0.9, 0.5]
+      }
+    },
+    {
+      "path": "../models/pyramid.obj",
+      "material": "violet",
+      "transform": {
+        "translate": [-0.25, -0.75, -6.55],
+        "rotate": [0.0, 12.0, 0.0],
+        "scale": [0.62, 0.62, 0.62]
+      }
+    },
+    {
+      "path": "../models/cube.obj",
+      "material": "green",
+      "transform": {
+        "translate": [0.75, -0.55, -7.0],
+        "rotate": [0.0, -24.0, 0.0],
+        "scale": [0.5, 0.82, 0.5]
+      }
+    },
+    {
+      "path": "../models/pyramid.obj",
+      "material": "ruby",
+      "transform": {
+        "translate": [1.75, -0.78, -7.45],
+        "rotate": [0.0, 58.0, 0.0],
+        "scale": [0.66, 0.66, 0.66]
+      }
+    },
+    {
+      "path": "../models/cube.obj",
+      "material": "gold",
+      "transform": {
+        "translate": [2.75, -0.6, -7.9],
+        "rotate": [0.0, -42.0, 0.0],
+        "scale": [0.48, 0.78, 0.48]
+      }
+    },
+    {
+      "path": "../models/pyramid.obj",
+      "material": "teal",
+      "transform": {
+        "translate": [3.65, -0.78, -8.35],
+        "rotate": [0.0, 30.0, 0.0],
+        "scale": [0.6, 0.6, 0.6]
+      }
+    },
+    {
+      "path": "../models/cube.obj",
+      "material": "violet",
+      "transform": {
+        "translate": [-3.35, -0.75, -8.15],
+        "rotate": [0.0, -15.0, 0.0],
+        "scale": [0.38, 0.62, 0.38]
+      }
+    },
+    {
+      "path": "../models/pyramid.obj",
+      "material": "green",
+      "transform": {
+        "translate": [-2.45, -0.8, -8.55],
+        "rotate": [0.0, 35.0, 0.0],
+        "scale": [0.55, 0.55, 0.55]
+      }
+    },
+    {
+      "path": "../models/cube.obj",
+      "material": "ruby",
+      "transform": {
+        "translate": [-1.45, -0.62, -9.0],
+        "rotate": [0.0, 62.0, 0.0],
+        "scale": [0.44, 0.76, 0.44]
+      }
+    },
+    {
+      "path": "../models/pyramid.obj",
+      "material": "gold",
+      "transform": {
+        "translate": [-0.4, -0.82, -9.45],
+        "rotate": [0.0, -22.0, 0.0],
+        "scale": [0.62, 0.62, 0.62]
+      }
+    },
+    {
+      "path": "../models/cube.obj",
+      "material": "teal",
+      "transform": {
+        "translate": [0.65, -0.68, -9.9],
+        "rotate": [0.0, 12.0, 0.0],
+        "scale": [0.42, 0.68, 0.42]
+      }
+    },
+    {
+      "path": "../models/pyramid.obj",
+      "material": "violet",
+      "transform": {
+        "translate": [1.65, -0.82, -10.35],
+        "rotate": [0.0, 48.0, 0.0],
+        "scale": [0.58, 0.58, 0.58]
+      }
+    },
+    {
+      "path": "../models/cube.obj",
+      "material": "green",
+      "transform": {
+        "translate": [2.65, -0.66, -10.8],
+        "rotate": [0.0, -36.0, 0.0],
+        "scale": [0.46, 0.72, 0.46]
+      }
+    },
+    {
+      "path": "../models/pyramid.obj",
+      "material": "ruby",
+      "transform": {
+        "translate": [-3.05, -0.9, -11.2],
+        "rotate": [0.0, 18.0, 0.0],
+        "scale": [0.5, 0.5, 0.5]
+      }
+    },
+    {
+      "path": "../models/cube.obj",
+      "material": "gold",
+      "transform": {
+        "translate": [-2.05, -0.74, -11.65],
+        "rotate": [0.0, -54.0, 0.0],
+        "scale": [0.38, 0.62, 0.38]
+      }
+    },
+    {
+      "path": "../models/pyramid.obj",
+      "material": "teal",
+      "transform": {
+        "translate": [-1.05, -0.9, -12.1],
+        "rotate": [0.0, 40.0, 0.0],
+        "scale": [0.52, 0.52, 0.52]
+      }
+    },
+    {
+      "path": "../models/cube.obj",
+      "material": "violet",
+      "transform": {
+        "translate": [0.0, -0.74, -12.55],
+        "rotate": [0.0, -10.0, 0.0],
+        "scale": [0.38, 0.62, 0.38]
+      }
+    },
+    {
+      "path": "../models/pyramid.obj",
+      "material": "green",
+      "transform": {
+        "translate": [1.05, -0.9, -13.0],
+        "rotate": [0.0, 24.0, 0.0],
+        "scale": [0.5, 0.5, 0.5]
+      }
+    },
+    {
+      "path": "../models/cube.obj",
+      "material": "ruby",
+      "transform": {
+        "translate": [2.05, -0.74, -13.45],
+        "rotate": [0.0, -44.0, 0.0],
+        "scale": [0.38, 0.62, 0.38]
+      }
+    },
+    {
+      "path": "../models/pyramid.obj",
+      "material": "gold",
+      "transform": {
+        "translate": [3.0, -0.9, -13.9],
+        "rotate": [0.0, 32.0, 0.0],
+        "scale": [0.48, 0.48, 0.48]
+      }
+    }
+  ]
+}

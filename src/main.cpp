@@ -1,6 +1,7 @@
 #include "application.h"
 #include "except.h"
 
+#include <algorithm>
 #include <cstdlib>
 #include <filesystem>
 #include <iostream>
@@ -12,16 +13,22 @@
 
 namespace {
 
-const std::filesystem::path kDefaultScenePath{"assets/scenes/default.json"};
+const std::filesystem::path kDefaultScenesDirectory{"assets/scenes"};
+const std::string kDefaultSceneName{"default"};
 
 struct ProgramOptions {
 	std::optional<int> target_fps;
+	std::filesystem::path scenes_directory;
 	std::filesystem::path scene_path;
+	std::optional<std::string> scene_spec;
+	bool list_scenes = false;
+	bool select_scene = false;
 	bool show_help = false;
 };
 
 std::string usage() {
-	return "usage: renderer [--fps 60|120] [--scene PATH] [--help]";
+	return "usage: renderer [--fps 60|120] [--scene NAME|PATH] [--scenes-dir PATH] "
+	       "[--list-scenes] [--select-scene] [--help]";
 }
 
 std::string helpText() {
@@ -29,7 +36,12 @@ std::string helpText() {
 	       "\n\n"
 	       "Options:\n"
 	       "  --fps 60|120   Limit rendering to 60 or 120 FPS. Without this, VSync is used.\n"
-	       "  --scene PATH   Load a scene JSON file. Defaults to assets/scenes/default.json.\n"
+	       "  --scene NAME   Load a scene from assets/scenes by name, for example default.\n"
+	       "  --scene PATH   Load a scene JSON file by path.\n"
+	       "  --scenes-dir PATH\n"
+	       "                 Directory used for named scenes. Defaults to assets/scenes.\n"
+	       "  --list-scenes  Print available scenes and exit.\n"
+	       "  --select-scene Show a numbered scene picker before opening the renderer.\n"
 	       "  -h, --help     Show this help message.\n"
 	       "\n"
 	       "Controls:\n"
@@ -103,21 +115,100 @@ std::filesystem::path executableDirectory(const char *argv0) {
 	return std::filesystem::current_path();
 }
 
-std::filesystem::path defaultScenePath(const char *argv0) {
+std::filesystem::path defaultScenesDirectory(const char *argv0) {
 	const std::filesystem::path executable_dir = executableDirectory(argv0);
 	const std::vector<std::filesystem::path> candidates{
-	    std::filesystem::current_path() / kDefaultScenePath,
-	    executable_dir / kDefaultScenePath,
-	    executable_dir.parent_path() / kDefaultScenePath,
+	    std::filesystem::current_path() / kDefaultScenesDirectory,
+	    executable_dir / kDefaultScenesDirectory,
+	    executable_dir.parent_path() / kDefaultScenesDirectory,
 	};
 
 	for (const std::filesystem::path& candidate : candidates) {
 		std::error_code error;
-		if (std::filesystem::exists(candidate, error)) {
+		if (std::filesystem::is_directory(candidate, error)) {
 			return canonicalIfPossible(candidate);
 		}
 	}
-	return executable_dir.parent_path() / kDefaultScenePath;
+	return executable_dir.parent_path() / kDefaultScenesDirectory;
+}
+
+std::string sceneNameFromPath(const std::filesystem::path& path) {
+	return path.stem().string();
+}
+
+std::vector<std::filesystem::path> sceneFiles(const std::filesystem::path& scenes_directory) {
+	std::vector<std::filesystem::path> scenes;
+	std::error_code error;
+	if (!std::filesystem::is_directory(scenes_directory, error)) {
+		return scenes;
+	}
+	for (const std::filesystem::directory_entry& entry :
+	     std::filesystem::directory_iterator(scenes_directory, error)) {
+		if (error) {
+			break;
+		}
+		if (entry.is_regular_file(error) && entry.path().extension() == ".json") {
+			scenes.push_back(canonicalIfPossible(entry.path()));
+		}
+	}
+	std::sort(scenes.begin(), scenes.end());
+	return scenes;
+}
+
+void printScenes(const std::vector<std::filesystem::path>& scenes) {
+	if (scenes.empty()) {
+		std::cout << "No scenes found.\n";
+		return;
+	}
+	for (const std::filesystem::path& scene : scenes) {
+		std::cout << sceneNameFromPath(scene) << "  " << scene.string() << '\n';
+	}
+}
+
+std::filesystem::path resolveScenePath(const std::filesystem::path& scenes_directory,
+                                       const std::string& scene_spec) {
+	const std::filesystem::path requested(scene_spec);
+	if (requested.is_absolute() || requested.has_parent_path()) {
+		return canonicalIfPossible(requested);
+	}
+
+	std::filesystem::path candidate = scenes_directory / requested;
+	if (!candidate.has_extension()) {
+		candidate.replace_extension(".json");
+	}
+	std::error_code error;
+	if (std::filesystem::exists(candidate, error)) {
+		return canonicalIfPossible(candidate);
+	}
+	return canonicalIfPossible(requested);
+}
+
+std::filesystem::path selectSceneInteractively(const std::filesystem::path& scenes_directory) {
+	const std::vector<std::filesystem::path> scenes = sceneFiles(scenes_directory);
+	if (scenes.empty()) {
+		throw std::runtime_error("no scenes found in " + scenes_directory.string());
+	}
+
+	std::cout << "Available scenes:\n";
+	for (std::size_t index = 0; index < scenes.size(); ++index) {
+		std::cout << "  " << index + 1 << ". " << sceneNameFromPath(scenes[index]) << '\n';
+	}
+	std::cout << "Choose scene [1-" << scenes.size() << "]: ";
+
+	std::string value;
+	std::getline(std::cin, value);
+	std::size_t parsed = 0;
+	int selection = 0;
+	try {
+		selection = std::stoi(value, &parsed);
+	} catch (const std::exception&) {
+		throw std::runtime_error("invalid scene selection: " + value);
+	}
+	if (parsed != value.size() || selection < 1 ||
+	    selection > static_cast<int>(scenes.size())) {
+		throw std::runtime_error("invalid scene selection: " + value);
+	}
+	return scenes[static_cast<std::size_t>(selection - 1)];
 }
 
 int parseFps(const std::string& value) {
@@ -144,7 +235,7 @@ std::string requireValue(int argc, char *argv[], int *index, const std::string& 
 
 ProgramOptions parseOptions(int argc, char *argv[]) {
 	ProgramOptions options;
-	options.scene_path = defaultScenePath(argc > 0 ? argv[0] : nullptr);
+	options.scenes_directory = defaultScenesDirectory(argc > 0 ? argv[0] : nullptr);
 
 	for (int index = 1; index < argc; ++index) {
 		const std::string argument = argv[index];
@@ -153,12 +244,21 @@ ProgramOptions parseOptions(int argc, char *argv[]) {
 		} else if (argument == "--fps") {
 			options.target_fps = parseFps(requireValue(argc, argv, &index, argument));
 		} else if (argument == "--scene") {
-			options.scene_path = requireValue(argc, argv, &index, argument);
+			options.scene_spec = requireValue(argc, argv, &index, argument);
+		} else if (argument == "--scenes-dir") {
+			options.scenes_directory = requireValue(argc, argv, &index, argument);
+		} else if (argument == "--list-scenes") {
+			options.list_scenes = true;
+		} else if (argument == "--select-scene") {
+			options.select_scene = true;
 		} else {
 			throw std::runtime_error("unknown option: " + argument + "\n" + usage());
 		}
 	}
 
+	options.scenes_directory = canonicalIfPossible(options.scenes_directory);
+	options.scene_path =
+	    resolveScenePath(options.scenes_directory, options.scene_spec.value_or(kDefaultSceneName));
 	return options;
 }
 
@@ -171,8 +271,15 @@ int main(int argc, char *argv[]) {
 			std::cout << helpText() << '\n';
 			return 0;
 		}
+		if (options.list_scenes) {
+			printScenes(sceneFiles(options.scenes_directory));
+			return 0;
+		}
 
-		renderer::Application app({options.scene_path, options.target_fps});
+		const std::filesystem::path scene_path =
+		    options.select_scene ? selectSceneInteractively(options.scenes_directory)
+		                         : options.scene_path;
+		renderer::Application app({scene_path, options.target_fps});
 		app.run();
 	} catch (...) {
 		renderer::reactToException();

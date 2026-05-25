@@ -50,6 +50,9 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(glm SDL2 nlohmann_json tinyobjloader)
 
+find_package(PNG REQUIRED)
+find_package(JPEG REQUIRED)
+
 if(TARGET SDL2::SDL2-static)
     set(SDL2_TARGET SDL2::SDL2-static)
 elseif(TARGET SDL2::SDL2)
@@ -87,6 +90,8 @@ add_executable(renderer
 target_link_libraries(renderer PRIVATE
     glm::glm
     nlohmann_json::nlohmann_json
+    PNG::PNG
+    JPEG::JPEG
     ${SDL2_TARGET}
     ${TINYOBJLOADER_TARGET}
 )
@@ -104,6 +109,6 @@ add_executable(renderer_tests
 )
 
 target_include_directories(renderer_tests PRIVATE src)
-target_link_libraries(renderer_tests PRIVATE glm::glm)
+target_link_libraries(renderer_tests PRIVATE glm::glm PNG::PNG JPEG::JPEG)
 
 add_test(NAME renderer_tests COMMAND renderer_tests)

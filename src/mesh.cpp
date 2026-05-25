@@ -2,8 +2,11 @@
 
 #include <tiny_obj_loader.h>
 
+#include <algorithm>
+#include <memory>
 #include <stdexcept>
 #include <string>
+#include <unordered_map>
 
 namespace renderer {
 namespace {
@@ -60,6 +63,32 @@ void addTriangle(Mesh *mesh, const mat4& transform, const tinyobj::attrib_t& att
 	                           material});
 }
 
+Material objMaterial(const tinyobj::material_t& source, const std::filesystem::path& base_path,
+                     Material fallback,
+                     std::unordered_map<std::string, std::shared_ptr<Texture>> *texture_cache) {
+	fallback.albedo = {source.diffuse[0], source.diffuse[1], source.diffuse[2]};
+	fallback.ambient = std::max({source.ambient[0], source.ambient[1], source.ambient[2]});
+	fallback.specular = std::max({source.specular[0], source.specular[1], source.specular[2]});
+	if (source.shininess > 0.0f) {
+		fallback.shininess = source.shininess;
+	}
+	fallback.emission = {source.emission[0], source.emission[1], source.emission[2]};
+
+	if (!source.diffuse_texname.empty()) {
+		const std::filesystem::path texture_path =
+		    (base_path / source.diffuse_texname).lexically_normal();
+		const std::string cache_key = texture_path.string();
+		auto texture = texture_cache->find(cache_key);
+		if (texture == texture_cache->end()) {
+			texture =
+			    texture_cache->emplace(cache_key, std::make_shared<Texture>(loadTexture(texture_path)))
+			        .first;
+		}
+		fallback.texture = texture->second;
+	}
+	return fallback;
+}
+
 } // namespace
 
 Mesh loadObjMesh(const std::filesystem::path& filename, Material material, const mat4& transform) {
@@ -77,17 +106,27 @@ Mesh loadObjMesh(const std::filesystem::path& filename, Material material, const
 	}
 
 	Mesh mesh;
+	std::unordered_map<std::string, std::shared_ptr<Texture>> texture_cache;
 	for (const tinyobj::shape_t& shape : shapes) {
 		std::size_t index_offset = 0;
-		for (const unsigned char face_vertices : shape.mesh.num_face_vertices) {
+		for (std::size_t face = 0; face < shape.mesh.num_face_vertices.size(); ++face) {
+			const unsigned char face_vertices = shape.mesh.num_face_vertices[face];
 			if (face_vertices < 3) {
 				index_offset += face_vertices;
 				continue;
 			}
+			Material face_material = material;
+			if (face < shape.mesh.material_ids.size()) {
+				const int material_id = shape.mesh.material_ids[face];
+				if (material_id >= 0 && material_id < static_cast<int>(materials.size())) {
+					face_material = objMaterial(materials[static_cast<std::size_t>(material_id)],
+					                            base_path, material, &texture_cache);
+				}
+			}
 			for (std::size_t vertex = 1; vertex + 1 < face_vertices; ++vertex) {
 				addTriangle(&mesh, transform, attributes, shape.mesh.indices[index_offset],
 				            shape.mesh.indices[index_offset + vertex],
-				            shape.mesh.indices[index_offset + vertex + 1], material, filename);
+				            shape.mesh.indices[index_offset + vertex + 1], face_material, filename);
 			}
 			index_offset += face_vertices;
 		}

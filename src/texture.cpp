@@ -1,8 +1,13 @@
 #include "texture.h"
 
+#include <jpeglib.h>
+#include <png.h>
+
 #include <algorithm>
 #include <cassert>
+#include <csetjmp>
 #include <cctype>
+#include <cstdio>
 #include <cmath>
 #include <fstream>
 #include <limits>
@@ -12,6 +17,12 @@
 
 namespace renderer {
 namespace {
+
+struct JpegErrorManager {
+	jpeg_error_mgr manager;
+	jmp_buf jump_buffer;
+	char message[JMSG_LENGTH_MAX]{};
+};
 
 int positiveDimension(int value, const std::string& name) {
 	if (value <= 0) {
@@ -76,6 +87,19 @@ vec3 readP6Pixel(std::istream& input, int max_value) {
 	return {normalizeColorChannel(channels[0], max_value),
 	        normalizeColorChannel(channels[1], max_value),
 	        normalizeColorChannel(channels[2], max_value)};
+}
+
+void jpegErrorExit(j_common_ptr info) {
+	auto *error_manager = reinterpret_cast<JpegErrorManager *>(info->err);
+	(*info->err->format_message)(info, error_manager->message);
+	longjmp(error_manager->jump_buffer, 1);
+}
+
+std::string lowercaseExtension(const std::filesystem::path& filename) {
+	std::string extension = filename.extension().string();
+	std::transform(extension.begin(), extension.end(), extension.begin(),
+	               [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+	return extension;
 }
 
 float clamp01(float value) {
@@ -157,6 +181,107 @@ Texture loadPPMTexture(const std::filesystem::path& filename) {
 		                               : readP6Pixel(input, max_value));
 	}
 	return Texture(width, height, std::move(pixels));
+}
+
+Texture loadJPEGTexture(const std::filesystem::path& filename) {
+	FILE *file = std::fopen(filename.string().c_str(), "rb");
+	if (file == nullptr) {
+		throw std::runtime_error("failed to open JPEG texture: " + filename.string());
+	}
+
+	jpeg_decompress_struct info{};
+	JpegErrorManager error_manager{};
+	info.err = jpeg_std_error(&error_manager.manager);
+	error_manager.manager.error_exit = jpegErrorExit;
+
+	if (setjmp(error_manager.jump_buffer) != 0) {
+		const std::string message = error_manager.message;
+		jpeg_destroy_decompress(&info);
+		std::fclose(file);
+		throw std::runtime_error("failed to read JPEG texture " + filename.string() + ": " +
+		                         message);
+	}
+
+	jpeg_create_decompress(&info);
+	jpeg_stdio_src(&info, file);
+	jpeg_read_header(&info, TRUE);
+	info.out_color_space = JCS_RGB;
+	jpeg_start_decompress(&info);
+
+	const int width = positiveDimension(static_cast<int>(info.output_width), "width");
+	const int height = positiveDimension(static_cast<int>(info.output_height), "height");
+	const int channels = static_cast<int>(info.output_components);
+	if (channels != 3) {
+		throw std::runtime_error("unexpected JPEG channel count in " + filename.string());
+	}
+
+	std::vector<unsigned char> row(static_cast<std::size_t>(width) * channels);
+	std::vector<vec3> pixels;
+	pixels.reserve(width * height);
+	while (info.output_scanline < info.output_height) {
+		unsigned char *row_pointer = row.data();
+		jpeg_read_scanlines(&info, &row_pointer, 1);
+		for (int x = 0; x < width; ++x) {
+			const int offset = x * channels;
+			pixels.push_back({static_cast<float>(row[offset]) / 255.0f,
+			                  static_cast<float>(row[offset + 1]) / 255.0f,
+			                  static_cast<float>(row[offset + 2]) / 255.0f});
+		}
+	}
+
+	jpeg_finish_decompress(&info);
+	jpeg_destroy_decompress(&info);
+	std::fclose(file);
+	return Texture(width, height, std::move(pixels));
+}
+
+Texture loadPNGTexture(const std::filesystem::path& filename) {
+	png_image image{};
+	image.version = PNG_IMAGE_VERSION;
+
+	if (png_image_begin_read_from_file(&image, filename.string().c_str()) == 0) {
+		throw std::runtime_error("failed to open PNG texture " + filename.string() + ": " +
+		                         image.message);
+	}
+
+	image.format = PNG_FORMAT_RGBA;
+	std::vector<unsigned char> bytes(PNG_IMAGE_SIZE(image));
+	if (png_image_finish_read(&image, nullptr, bytes.data(), 0, nullptr) == 0) {
+		const std::string message = image.message;
+		png_image_free(&image);
+		throw std::runtime_error("failed to read PNG texture " + filename.string() + ": " +
+		                         message);
+	}
+
+	std::vector<vec3> pixels;
+	pixels.reserve(image.width * image.height);
+	for (png_uint_32 index = 0; index < image.width * image.height; ++index) {
+		const std::size_t offset = static_cast<std::size_t>(index) * 4;
+		const float alpha = static_cast<float>(bytes[offset + 3]) / 255.0f;
+		pixels.push_back({static_cast<float>(bytes[offset]) / 255.0f * alpha,
+		                  static_cast<float>(bytes[offset + 1]) / 255.0f * alpha,
+		                  static_cast<float>(bytes[offset + 2]) / 255.0f * alpha});
+	}
+
+	const int width = positiveDimension(static_cast<int>(image.width), "width");
+	const int height = positiveDimension(static_cast<int>(image.height), "height");
+	png_image_free(&image);
+	return Texture(width, height, std::move(pixels));
+}
+
+Texture loadTexture(const std::filesystem::path& filename) {
+	const std::string extension = lowercaseExtension(filename);
+	if (extension == ".ppm") {
+		return loadPPMTexture(filename);
+	}
+	if (extension == ".png") {
+		return loadPNGTexture(filename);
+	}
+	if (extension == ".jpg" || extension == ".jpeg") {
+		return loadJPEGTexture(filename);
+	}
+	throw std::runtime_error("unsupported texture format in " + filename.string() +
+	                         ": expected .ppm, .png, .jpg, or .jpeg");
 }
 
 } // namespace renderer

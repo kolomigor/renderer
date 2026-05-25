@@ -1,6 +1,6 @@
 # Renderer
 
-Небольшой программный CPU-рендерер с окном SDL, загрузкой сцен из JSON, загрузкой текстурированных OBJ-моделей, перспективной проекцией, отсечением по пирамиде видимости, отсечением невидимых граней, рендерингом материалов без освещения и буфером глубины.
+Небольшой программный CPU-рендерер с окном SDL, каталогом JSON-сцен, загрузкой текстурированных OBJ-моделей, перспективной проекцией, отсечением по пирамиде видимости, отсечением невидимых граней, рендерингом материалов без освещения и буфером глубины.
 
 ## Сборка
 
@@ -32,15 +32,38 @@ cmake --build build
 ./build/renderer --fps 120
 ```
 
-Загрузить пользовательскую сцену:
+Сцены лежат отдельно в `assets/scenes`. Посмотреть доступные сцены:
 
 ```sh
+./build/renderer --list-scenes
+```
+
+Выбрать сцену по имени из `assets/scenes`:
+
+```sh
+./build/renderer --scene default
+./build/renderer --scene gallery
+./build/renderer --scene leather-bag
+./build/renderer --scene performance
+./build/renderer --scene town-bus
+```
+
+Показать интерактивный список сцен перед запуском:
+
+```sh
+./build/renderer --select-scene
+```
+
+Загрузить сцену из другого каталога или по прямому пути:
+
+```sh
+./build/renderer --scenes-dir path/to/scenes --scene custom
 ./build/renderer --scene assets/scenes/default.json
 ```
 
 ## Текстуры
 
-Материалы могут ссылаться на ASCII- или бинарные PPM-текстуры через поле `texture`:
+Материалы могут ссылаться на JPEG, PNG, ASCII- или бинарные PPM-текстуры через поле `texture`:
 
 ```json
 {

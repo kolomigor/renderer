@@ -62,7 +62,7 @@ Material readMaterial(const Json& object, const std::filesystem::path& scene_pat
 	if (object.contains("texture")) {
 		const std::filesystem::path texture_path =
 		    resolvePath(scene_path, object.at("texture").get<std::string>());
-		material.texture = std::make_shared<Texture>(loadPPMTexture(texture_path));
+		material.texture = std::make_shared<Texture>(loadTexture(texture_path));
 	}
 	return material;
 }
