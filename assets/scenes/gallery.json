@@ -1,0 +1,61 @@
+{
+  "camera": {
+    "position": [4.4, 2.4, -1.3],
+    "target": [0.0, -0.15, -7.0],
+    "fov": 64.0,
+    "near": 0.1,
+    "far": 100.0
+  },
+  "materials": {
+    "red": {
+      "albedo": [0.95, 0.08, 0.06]
+    },
+    "blue": {
+      "albedo": [0.08, 0.32, 0.95]
+    },
+    "green": {
+      "albedo": [0.2, 0.82, 0.34]
+    },
+    "white": {
+      "albedo": [0.88, 0.86, 0.8]
+    }
+  },
+  "meshes": [
+    {
+      "path": "../models/cube.obj",
+      "material": "white",
+      "transform": {
+        "translate": [0.0, -1.25, -7.0],
+        "rotate": [0.0, 0.0, 0.0],
+        "scale": [3.5, 0.08, 2.2]
+      }
+    },
+    {
+      "path": "../models/cube.obj",
+      "material": "red",
+      "transform": {
+        "translate": [-1.8, -0.15, -6.1],
+        "rotate": [0.0, 22.0, 0.0],
+        "scale": [0.65, 1.0, 0.65]
+      }
+    },
+    {
+      "path": "../models/pyramid.obj",
+      "material": "green",
+      "transform": {
+        "translate": [0.0, -0.35, -7.0],
+        "rotate": [0.0, 45.0, 0.0],
+        "scale": [1.0, 1.0, 1.0]
+      }
+    },
+    {
+      "path": "../models/cube.obj",
+      "material": "blue",
+      "transform": {
+        "translate": [1.8, -0.15, -6.25],
+        "rotate": [0.0, -26.0, 0.0],
+        "scale": [0.65, 1.0, 0.65]
+      }
+    }
+  ]
+}

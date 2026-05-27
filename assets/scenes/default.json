@@ -1,0 +1,49 @@
+{
+  "camera": {
+    "position": [3.6, 2.2, -1.8],
+    "target": [0.0, -0.15, -6.0],
+    "fov": 60.0,
+    "near": 0.1,
+    "far": 100.0
+  },
+  "materials": {
+    "ruby": {
+      "albedo": [1.0, 0.05, 0.04]
+    },
+    "gold": {
+      "albedo": [1.0, 0.72, 0.22]
+    },
+    "teal": {
+      "albedo": [0.05, 0.8, 0.78]
+    }
+  },
+  "meshes": [
+    {
+      "path": "../models/cube.obj",
+      "material": "ruby",
+      "transform": {
+        "translate": [-1.25, -0.05, -6.0],
+        "rotate": [0.0, 28.0, 0.0],
+        "scale": [0.85, 0.85, 0.85]
+      }
+    },
+    {
+      "path": "../models/pyramid.obj",
+      "material": "gold",
+      "transform": {
+        "translate": [1.15, -0.1, -5.7],
+        "rotate": [0.0, -25.0, 0.0],
+        "scale": [0.95, 0.95, 0.95]
+      }
+    },
+    {
+      "path": "../models/cube.obj",
+      "material": "teal",
+      "transform": {
+        "translate": [0.15, 0.05, -7.4],
+        "rotate": [0.0, -18.0, 0.0],
+        "scale": [0.6, 0.6, 0.6]
+      }
+    }
+  ]
+}
