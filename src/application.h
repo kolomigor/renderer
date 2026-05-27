@@ -9,7 +9,8 @@
 namespace renderer {
 
 struct ApplicationConfig {
-	std::filesystem::path scene_path;
+	std::optional<std::filesystem::path> scene_path;
+	std::optional<std::filesystem::path> obj_path;
 	std::optional<int> target_fps = std::nullopt;
 };
 

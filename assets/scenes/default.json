@@ -6,34 +6,15 @@
     "near": 0.1,
     "far": 100.0
   },
-  "lights": {
-    "ambient": {
-      "color": [1.0, 1.0, 1.0],
-      "intensity": 0.0
-    },
-    "directional": []
-  },
   "materials": {
     "ruby": {
-      "albedo": [1.0, 0.05, 0.04],
-      "ambient": 0.32,
-      "diffuse": 0.7,
-      "specular": 0.18,
-      "shininess": 40.0
+      "albedo": [1.0, 0.05, 0.04]
     },
     "gold": {
-      "albedo": [1.0, 0.72, 0.22],
-      "ambient": 0.35,
-      "diffuse": 0.68,
-      "specular": 0.28,
-      "shininess": 64.0
+      "albedo": [1.0, 0.72, 0.22]
     },
     "teal": {
-      "albedo": [0.05, 0.8, 0.78],
-      "ambient": 0.35,
-      "diffuse": 0.7,
-      "specular": 0.12,
-      "shininess": 28.0
+      "albedo": [0.05, 0.8, 0.78]
     }
   },
   "meshes": [

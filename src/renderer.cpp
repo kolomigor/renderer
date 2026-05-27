@@ -21,8 +21,7 @@ float toScreenY(float normalized_y, int height) {
 }
 
 Vertex transformVertex(const mat4& transform, const Vertex& vertex) {
-	return {transform * vertex.position, vertex.color, vertex.texcoord, vertex.world_position,
-	        vertex.normal};
+	return {transform * vertex.position, vertex.color, vertex.texcoord};
 }
 
 Triangle transformTriangle(const mat4& transform, const Triangle& triangle) {
@@ -55,9 +54,7 @@ Vertex projectVertexToScreen(const Vertex& vertex, int width, int height) {
 	return {{toScreenX(normalized.x, width), toScreenY(normalized.y, height), normalized.z,
 	         1.0f / vertex.position.w},
 	        vertex.color,
-	        vertex.texcoord,
-	        vertex.world_position,
-	        vertex.normal};
+	        vertex.texcoord};
 }
 
 Triangle projectTriangleToScreen(const Triangle& triangle, int width, int height) {
@@ -74,7 +71,7 @@ Renderer::Renderer(Width width, Height height) : width_(width), height_(height) 
 	assert(height_ > 0);
 }
 
-Picture Renderer::render(const World& world, const Camera& camera, const Lights&) const {
+Picture Renderer::render(const World& world, const Camera& camera) const {
 	Picture picture(Width{width_}, Height{height_});
 	picture.clear(kBlack);
 

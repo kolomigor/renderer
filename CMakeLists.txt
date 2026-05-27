@@ -81,7 +81,6 @@ add_executable(renderer
     src/clip.cpp
     src/rasterizer.cpp
     src/except.cpp
-    src/lights.cpp
     src/mesh.cpp
     src/scene.cpp
     src/window.cpp
@@ -100,15 +99,24 @@ add_executable(renderer_tests
     tests/renderer_tests.cpp
     src/camera.cpp
     src/clip.cpp
-    src/lights.cpp
     src/picture.cpp
     src/rasterizer.cpp
     src/renderer.cpp
+    src/image_io.cpp
+    src/mesh.cpp
+    src/scene.cpp
     src/texture.cpp
     src/world.cpp
 )
 
 target_include_directories(renderer_tests PRIVATE src)
-target_link_libraries(renderer_tests PRIVATE glm::glm PNG::PNG JPEG::JPEG)
+target_compile_definitions(renderer_tests PRIVATE RENDERER_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
+target_link_libraries(renderer_tests PRIVATE
+    glm::glm
+    nlohmann_json::nlohmann_json
+    PNG::PNG
+    JPEG::JPEG
+    ${TINYOBJLOADER_TARGET}
+)
 
 add_test(NAME renderer_tests COMMAND renderer_tests)

@@ -45,7 +45,6 @@ cmake --build build
 ./build/renderer --scene gallery
 ./build/renderer --scene leather-bag
 ./build/renderer --scene performance
-./build/renderer --scene town-bus
 ```
 
 Показать интерактивный список сцен перед запуском:
@@ -61,6 +60,15 @@ cmake --build build
 ./build/renderer --scene assets/scenes/default.json
 ```
 
+Открыть OBJ-модель без JSON-сцены:
+
+```sh
+./build/renderer --obj path/to/model.obj
+./build/renderer --scene path/to/model.obj
+```
+
+В этом режиме рендерер сам создает сцену в памяти: загружает OBJ/MTL, задает дефолтный материал, считает границы модели и ставит камеру так, чтобы объект попал в кадр.
+
 ## Текстуры
 
 Материалы могут ссылаться на JPEG, PNG, ASCII- или бинарные PPM-текстуры через поле `texture`:
@@ -68,11 +76,7 @@ cmake --build build
 ```json
 {
   "albedo": [1.0, 1.0, 1.0],
-  "texture": "../textures/ruby.ppm",
-  "ambient": 0.32,
-  "diffuse": 0.9,
-  "specular": 0.35,
-  "shininess": 40.0
+  "texture": "../textures/ruby.ppm"
 }
 ```
 

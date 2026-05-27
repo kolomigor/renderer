@@ -2,6 +2,7 @@
 #include "except.h"
 
 #include <algorithm>
+#include <cctype>
 #include <cstdlib>
 #include <filesystem>
 #include <iostream>
@@ -20,6 +21,7 @@ struct ProgramOptions {
 	std::optional<int> target_fps;
 	std::filesystem::path scenes_directory;
 	std::filesystem::path scene_path;
+	std::optional<std::filesystem::path> obj_path;
 	std::optional<std::string> scene_spec;
 	bool list_scenes = false;
 	bool select_scene = false;
@@ -27,7 +29,7 @@ struct ProgramOptions {
 };
 
 std::string usage() {
-	return "usage: renderer [--fps 60|120] [--scene NAME|PATH] [--scenes-dir PATH] "
+	return "usage: renderer [--fps 60|120] [--scene NAME|PATH] [--obj PATH] [--scenes-dir PATH] "
 	       "[--list-scenes] [--select-scene] [--help]";
 }
 
@@ -37,7 +39,8 @@ std::string helpText() {
 	       "Options:\n"
 	       "  --fps 60|120   Limit rendering to 60 or 120 FPS. Without this, VSync is used.\n"
 	       "  --scene NAME   Load a scene from assets/scenes by name, for example default.\n"
-	       "  --scene PATH   Load a scene JSON file by path.\n"
+	       "  --scene PATH   Load a scene JSON file by path, or auto-generate a scene for OBJ.\n"
+	       "  --obj PATH     Auto-generate a scene for an OBJ model, without writing JSON.\n"
 	       "  --scenes-dir PATH\n"
 	       "                 Directory used for named scenes. Defaults to assets/scenes.\n"
 	       "  --list-scenes  Print available scenes and exit.\n"
@@ -183,6 +186,18 @@ std::filesystem::path resolveScenePath(const std::filesystem::path& scenes_direc
 	return canonicalIfPossible(requested);
 }
 
+bool hasExtension(const std::filesystem::path& path, const std::string& expected) {
+	std::string extension = path.extension().string();
+	std::transform(extension.begin(), extension.end(), extension.begin(), [](unsigned char value) {
+		return static_cast<char>(std::tolower(value));
+	});
+	return extension == expected;
+}
+
+bool isObjPath(const std::filesystem::path& path) {
+	return hasExtension(path, ".obj");
+}
+
 std::filesystem::path selectSceneInteractively(const std::filesystem::path& scenes_directory) {
 	const std::vector<std::filesystem::path> scenes = sceneFiles(scenes_directory);
 	if (scenes.empty()) {
@@ -245,6 +260,8 @@ ProgramOptions parseOptions(int argc, char *argv[]) {
 			options.target_fps = parseFps(requireValue(argc, argv, &index, argument));
 		} else if (argument == "--scene") {
 			options.scene_spec = requireValue(argc, argv, &index, argument);
+		} else if (argument == "--obj") {
+			options.obj_path = requireValue(argc, argv, &index, argument);
 		} else if (argument == "--scenes-dir") {
 			options.scenes_directory = requireValue(argc, argv, &index, argument);
 		} else if (argument == "--list-scenes") {
@@ -257,8 +274,19 @@ ProgramOptions parseOptions(int argc, char *argv[]) {
 	}
 
 	options.scenes_directory = canonicalIfPossible(options.scenes_directory);
-	options.scene_path =
-	    resolveScenePath(options.scenes_directory, options.scene_spec.value_or(kDefaultSceneName));
+	if (options.obj_path.has_value() &&
+	    (options.scene_spec.has_value() || options.select_scene || options.list_scenes)) {
+		throw std::runtime_error("--obj cannot be combined with scene selection options\n" + usage());
+	}
+	if (options.obj_path.has_value()) {
+		if (!isObjPath(*options.obj_path)) {
+			throw std::runtime_error("--obj expects an .obj file: " + options.obj_path->string());
+		}
+		options.obj_path = canonicalIfPossible(*options.obj_path);
+	} else {
+		options.scene_path =
+		    resolveScenePath(options.scenes_directory, options.scene_spec.value_or(kDefaultSceneName));
+	}
 	return options;
 }
 
@@ -279,7 +307,16 @@ int main(int argc, char *argv[]) {
 		const std::filesystem::path scene_path =
 		    options.select_scene ? selectSceneInteractively(options.scenes_directory)
 		                         : options.scene_path;
-		renderer::Application app({scene_path, options.target_fps});
+		renderer::ApplicationConfig config;
+		config.target_fps = options.target_fps;
+		if (options.obj_path.has_value()) {
+			config.obj_path = options.obj_path;
+		} else if (isObjPath(scene_path)) {
+			config.obj_path = scene_path;
+		} else {
+			config.scene_path = scene_path;
+		}
+		renderer::Application app(config);
 		app.run();
 	} catch (...) {
 		renderer::reactToException();

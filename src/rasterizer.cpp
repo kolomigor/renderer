@@ -65,28 +65,6 @@ vec2 interpolateTexcoord(const Triangle& triangle, float alpha, float beta, floa
 	return texcoord_over_w / reciprocal_w;
 }
 
-vec3 interpolateWorldPosition(const Triangle& triangle, float alpha, float beta, float gamma) {
-	const float reciprocal_w = alpha * triangle.v0.position.w + beta * triangle.v1.position.w +
-	                           gamma * triangle.v2.position.w;
-	const vec3 position_over_w = alpha * triangle.v0.world_position * triangle.v0.position.w +
-	                             beta * triangle.v1.world_position * triangle.v1.position.w +
-	                             gamma * triangle.v2.world_position * triangle.v2.position.w;
-	return position_over_w / reciprocal_w;
-}
-
-vec3 interpolateNormal(const Triangle& triangle, float alpha, float beta, float gamma) {
-	const float reciprocal_w = alpha * triangle.v0.position.w + beta * triangle.v1.position.w +
-	                           gamma * triangle.v2.position.w;
-	const vec3 normal_over_w = alpha * triangle.v0.normal * triangle.v0.position.w +
-	                           beta * triangle.v1.normal * triangle.v1.position.w +
-	                           gamma * triangle.v2.normal * triangle.v2.position.w;
-	const vec3 normal = normal_over_w / reciprocal_w;
-	if (length(normal) == 0.0f) {
-		return {0.0f, 0.0f, 1.0f};
-	}
-	return normalize(normal);
-}
-
 float interpolateDepth(const Triangle& triangle, float alpha, float beta, float gamma) {
 	return alpha * triangle.v0.position.z + beta * triangle.v1.position.z +
 	       gamma * triangle.v2.position.z;
@@ -100,62 +78,9 @@ vec3 materialBaseColor(const Triangle& triangle, float alpha, float beta, float 
 	return color * triangle.material.texture->sample(interpolateTexcoord(triangle, alpha, beta, gamma));
 }
 
-float pointLightAttenuation(const PointLight& light, float distance_to_light) {
-	return 1.0f / (1.0f + light.linear_attenuation * distance_to_light +
-	               light.quadratic_attenuation * distance_to_light * distance_to_light);
-}
-
-vec3 specularColor(const Material& material, const vec3& light_color, float light_intensity,
-                   float attenuation, const vec3& normal, const vec3& direction_to_light,
-                   const vec3& direction_to_camera, float light_power) {
-	const vec3 reflected_light = normalize(reflect(-direction_to_light, normal));
-	const float specular_power =
-	    std::pow(std::max(dot(reflected_light, direction_to_camera), 0.0f), material.shininess);
-	return light_color * light_intensity * attenuation * material.specular * specular_power *
-	       light_power;
-}
-
-vec3 litPixelColor(const Triangle& triangle, const Camera& camera, const Lights& lights,
-                   float alpha, float beta, float gamma) {
-	const Material& material = triangle.material;
-	const vec3 base_color = materialBaseColor(triangle, alpha, beta, gamma);
-	const vec3 world_position = interpolateWorldPosition(triangle, alpha, beta, gamma);
-	const vec3 normal = interpolateNormal(triangle, alpha, beta, gamma);
-	const vec3 direction_to_camera = normalize(camera.position() - world_position);
-	vec3 color =
-	    material.emission + base_color * lights.ambientColor() * lights.ambientIntensity() *
-	                            material.ambient;
-
-	for (const DirectionalLight& light : lights.directionalLights()) {
-		const vec3 direction_to_light = light.direction_to_light;
-		const float light_power = std::max(dot(normal, direction_to_light), 0.0f);
-		color += base_color * light.color * light.intensity * material.diffuse * light_power;
-		color += specularColor(material, light.color, light.intensity, 1.0f, normal,
-		                       direction_to_light, direction_to_camera, light_power);
-	}
-
-	for (const PointLight& light : lights.pointLights()) {
-		const vec3 to_light = light.position - world_position;
-		const float distance_to_light = length(to_light);
-		if (distance_to_light == 0.0f) {
-			continue;
-		}
-		const vec3 direction_to_light = to_light / distance_to_light;
-		const float attenuation = pointLightAttenuation(light, distance_to_light);
-		const float light_power = std::max(dot(normal, direction_to_light), 0.0f);
-		color += base_color * light.color * light.intensity * attenuation * material.diffuse *
-		         light_power;
-		color += specularColor(material, light.color, light.intensity, attenuation, normal,
-		                       direction_to_light, direction_to_camera, light_power);
-	}
-
-	return color;
-}
-
 } // namespace
 
-void rasterizeTriangleWithShader(const Triangle& triangle, Picture *picture,
-                                 const Camera *camera = nullptr, const Lights *lights = nullptr) {
+void rasterizeTriangleWithShader(const Triangle& triangle, Picture *picture) {
 	assert(picture != nullptr);
 
 	const vec2 p0 = xy(triangle.v0.position);
@@ -179,10 +104,7 @@ void rasterizeTriangleWithShader(const Triangle& triangle, Picture *picture,
 				const float beta = edge1 / area;
 				const float gamma = edge2 / area;
 				const float depth = interpolateDepth(triangle, alpha, beta, gamma);
-				const vec3 color =
-				    (camera != nullptr && lights != nullptr)
-				        ? litPixelColor(triangle, *camera, *lights, alpha, beta, gamma)
-				        : materialBaseColor(triangle, alpha, beta, gamma);
+				const vec3 color = materialBaseColor(triangle, alpha, beta, gamma);
 				picture->setPixel(PixelX{x}, PixelY{y}, color, depth);
 			}
 		}
@@ -191,11 +113,6 @@ void rasterizeTriangleWithShader(const Triangle& triangle, Picture *picture,
 
 void Rasterizer::rasterizeTriangle(const Triangle& triangle, Picture *picture) {
 	rasterizeTriangleWithShader(triangle, picture);
-}
-
-void Rasterizer::rasterizeTriangle(const Triangle& triangle, const Camera& camera,
-                                   const Lights& lights, Picture *picture) {
-	rasterizeTriangleWithShader(triangle, picture, &camera, &lights);
 }
 
 } // namespace renderer

@@ -1,7 +1,6 @@
 #pragma once
 
 #include "camera.h"
-#include "lights.h"
 #include "picture.h"
 #include "strong_alias.h"
 #include "world.h"
@@ -12,7 +11,7 @@ class Renderer {
 public:
 	Renderer(Width width, Height height);
 
-	Picture render(const World& world, const Camera& camera, const Lights& lights) const;
+	Picture render(const World& world, const Camera& camera) const;
 
 private:
 	int width_;

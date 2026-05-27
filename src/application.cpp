@@ -6,6 +6,7 @@
 #include <chrono>
 #include <cmath>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <thread>
 
@@ -63,10 +64,20 @@ void applyCameraInput(Camera *camera, const FrameInput& input, float frame_secon
 	camera->turn(yaw_delta, pitch_delta);
 }
 
+Scene loadConfiguredScene(const ApplicationConfig& config) {
+	if (config.obj_path.has_value()) {
+		return loadObjScene(*config.obj_path, kFrameWidth, kFrameHeight);
+	}
+	if (!config.scene_path.has_value()) {
+		throw std::runtime_error("missing scene path");
+	}
+	return loadScene(*config.scene_path, kFrameWidth, kFrameHeight);
+}
+
 } // namespace
 
 Application::Application(ApplicationConfig config)
-    : scene_(loadScene(config.scene_path, kFrameWidth, kFrameHeight)),
+    : scene_(loadConfiguredScene(config)),
       renderer_(kFrameWidth, kFrameHeight),
       target_fps_(config.target_fps) {
 }
@@ -94,7 +105,7 @@ void Application::run() {
 		}
 		applyCameraInput(&scene_.camera, input, frame_seconds, &camera_movement_velocity_,
 		                 &camera_turn_velocity_);
-		const Picture picture = renderer_.render(scene_.world, scene_.camera, scene_.lights);
+		const Picture picture = renderer_.render(scene_.world, scene_.camera);
 		window.show(picture);
 		if (target_frame_duration.has_value()) {
 			next_frame += *target_frame_duration;

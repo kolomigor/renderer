@@ -2,7 +2,6 @@
 
 #include <tiny_obj_loader.h>
 
-#include <algorithm>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -42,9 +41,8 @@ vec2 readTexcoord(const tinyobj::attrib_t& attributes, const tinyobj::index_t& i
 	return {attributes.texcoords[texcoord_index], attributes.texcoords[texcoord_index + 1]};
 }
 
-Vertex makeMeshVertex(const vec3& position, const vec2& texcoord, const Material& material,
-                      const vec3& normal) {
-	return makeVertex(position, material.albedo, texcoord, normal);
+Vertex makeMeshVertex(const vec3& position, const vec2& texcoord, const Material& material) {
+	return makeVertex(position, material.albedo, texcoord);
 }
 
 void addTriangle(Mesh *mesh, const mat4& transform, const tinyobj::attrib_t& attributes,
@@ -53,13 +51,9 @@ void addTriangle(Mesh *mesh, const mat4& transform, const tinyobj::attrib_t& att
 	const vec3 p0 = transformedPosition(transform, readPosition(attributes, a, filename));
 	const vec3 p1 = transformedPosition(transform, readPosition(attributes, b, filename));
 	const vec3 p2 = transformedPosition(transform, readPosition(attributes, c, filename));
-	const vec3 normal = triangleNormal(p0, p1, p2);
-	mesh->triangles.push_back({makeMeshVertex(p0, readTexcoord(attributes, a, filename), material,
-	                                          normal),
-	                           makeMeshVertex(p1, readTexcoord(attributes, b, filename), material,
-	                                          normal),
-	                           makeMeshVertex(p2, readTexcoord(attributes, c, filename), material,
-	                                          normal),
+	mesh->triangles.push_back({makeMeshVertex(p0, readTexcoord(attributes, a, filename), material),
+	                           makeMeshVertex(p1, readTexcoord(attributes, b, filename), material),
+	                           makeMeshVertex(p2, readTexcoord(attributes, c, filename), material),
 	                           material});
 }
 
@@ -67,13 +61,6 @@ Material objMaterial(const tinyobj::material_t& source, const std::filesystem::p
                      Material fallback,
                      std::unordered_map<std::string, std::shared_ptr<Texture>> *texture_cache) {
 	fallback.albedo = {source.diffuse[0], source.diffuse[1], source.diffuse[2]};
-	fallback.ambient = std::max({source.ambient[0], source.ambient[1], source.ambient[2]});
-	fallback.specular = std::max({source.specular[0], source.specular[1], source.specular[2]});
-	if (source.shininess > 0.0f) {
-		fallback.shininess = source.shininess;
-	}
-	fallback.emission = {source.emission[0], source.emission[1], source.emission[2]};
-
 	if (!source.diffuse_texname.empty()) {
 		const std::filesystem::path texture_path =
 		    (base_path / source.diffuse_texname).lexically_normal();

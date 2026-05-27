@@ -5,6 +5,8 @@
 
 #include <nlohmann/json.hpp>
 
+#include <algorithm>
+#include <cmath>
 #include <fstream>
 #include <memory>
 #include <stdexcept>
@@ -16,8 +18,14 @@ namespace {
 
 using Json = nlohmann::json;
 
+struct Bounds {
+	vec3 min;
+	vec3 max;
+	bool has_point = false;
+};
+
 Material defaultMaterial() {
-	return {{0.8f, 0.8f, 0.8f}, 0.35f, 0.85f, 0.25f, 32.0f};
+	return {{0.8f, 0.8f, 0.8f}};
 }
 
 Aspect makeAspect(Width width, Height height) {
@@ -54,11 +62,6 @@ vec3 readVec3(const Json& object, const std::string& key, const vec3& fallback) 
 Material readMaterial(const Json& object, const std::filesystem::path& scene_path) {
 	Material material = defaultMaterial();
 	material.albedo = readVec3(object, "albedo", material.albedo);
-	material.ambient = readFloat(object, "ambient", material.ambient);
-	material.diffuse = readFloat(object, "diffuse", material.diffuse);
-	material.specular = readFloat(object, "specular", material.specular);
-	material.shininess = readFloat(object, "shininess", material.shininess);
-	material.emission = readVec3(object, "emission", material.emission);
 	if (object.contains("texture")) {
 		const std::filesystem::path texture_path =
 		    resolvePath(scene_path, object.at("texture").get<std::string>());
@@ -115,26 +118,48 @@ Camera readCamera(const Json& root, Width width, Height height) {
 	return {fov, makeAspect(width, height), near_plane, far_plane, position, target};
 }
 
-Lights readLights(const Json& root) {
-	const Json& lights_config = root.at("lights");
-	const Json& ambient = lights_config.at("ambient");
-	Lights lights(readVec3(ambient, "color", {1.0f, 1.0f, 1.0f}),
-	              readFloat(ambient, "intensity", 0.5f));
-	for (const Json& light : lights_config.at("directional")) {
-		lights.addDirectionalLight({readVec3(light, "directionToLight", kWorldUp),
-		                            readVec3(light, "color", {1.0f, 1.0f, 1.0f}),
-		                            readFloat(light, "intensity", 1.0f)});
+void includePoint(Bounds *bounds, const vec3& point) {
+	if (!bounds->has_point) {
+		bounds->min = point;
+		bounds->max = point;
+		bounds->has_point = true;
+		return;
 	}
-	if (lights_config.contains("point")) {
-		for (const Json& light : lights_config.at("point")) {
-			lights.addPointLight({readVec3(light, "position", {0.0f, 0.0f, 0.0f}),
-			                      readVec3(light, "color", {1.0f, 1.0f, 1.0f}),
-			                      readFloat(light, "intensity", 1.0f),
-			                      readFloat(light, "linearAttenuation", 0.09f),
-			                      readFloat(light, "quadraticAttenuation", 0.032f)});
-		}
+	bounds->min = {std::min(bounds->min.x, point.x), std::min(bounds->min.y, point.y),
+	               std::min(bounds->min.z, point.z)};
+	bounds->max = {std::max(bounds->max.x, point.x), std::max(bounds->max.y, point.y),
+	               std::max(bounds->max.z, point.z)};
+}
+
+Bounds worldBounds(const World& world) {
+	Bounds bounds;
+	for (const Triangle& triangle : world.triangles()) {
+		includePoint(&bounds, xyz(triangle.v0.position));
+		includePoint(&bounds, xyz(triangle.v1.position));
+		includePoint(&bounds, xyz(triangle.v2.position));
 	}
-	return lights;
+	if (!bounds.has_point) {
+		throw std::runtime_error("auto scene has no drawable triangles");
+	}
+	return bounds;
+}
+
+float autoCameraDistance(float radius, float fov_degrees, float aspect) {
+	const float vertical_half_fov = radians(fov_degrees) * 0.5f;
+	const float horizontal_half_fov = std::atan(std::tan(vertical_half_fov) * aspect);
+	const float limiting_half_fov = std::min(vertical_half_fov, horizontal_half_fov);
+	return radius / std::sin(limiting_half_fov) * 1.2f;
+}
+
+Camera autoCameraFor(const Bounds& bounds, Width width, Height height) {
+	constexpr float kAutoFov = 60.0f;
+	const vec3 center = (bounds.min + bounds.max) * 0.5f;
+	const float radius = std::max(length(bounds.max - bounds.min) * 0.5f, 1.0f);
+	const float aspect = makeAspect(width, height);
+	const float distance = autoCameraDistance(radius, kAutoFov, aspect);
+	const vec3 position = center + vec3{0.0f, radius * 0.25f, distance};
+	return {Fov{kAutoFov}, Aspect{aspect}, NearPlane{0.01f},
+	        FarPlane{std::max(100.0f, distance + radius * 4.0f)}, position, center};
 }
 
 World readWorld(const Json& root, const std::filesystem::path& scene_path,
@@ -165,8 +190,13 @@ Json loadJson(const std::filesystem::path& filename) {
 Scene loadScene(const std::filesystem::path& filename, Width width, Height height) {
 	const Json root = loadJson(filename);
 	const std::unordered_map<std::string, Material> materials = readMaterials(root, filename);
-	return {readWorld(root, filename, materials), readCamera(root, width, height),
-	        readLights(root)};
+	return {readWorld(root, filename, materials), readCamera(root, width, height)};
+}
+
+Scene loadObjScene(const std::filesystem::path& filename, Width width, Height height) {
+	World world;
+	world.addMesh(loadObjMesh(filename, defaultMaterial(), identity()));
+	return {world, autoCameraFor(worldBounds(world), width, height)};
 }
 
 } // namespace renderer

@@ -3,10 +3,12 @@
 #include "picture.h"
 #include "rasterizer.h"
 #include "renderer.h"
+#include "scene.h"
 #include "texture.h"
 
 #include <cmath>
 #include <exception>
+#include <filesystem>
 #include <iostream>
 #include <memory>
 #include <stdexcept>
@@ -18,16 +20,20 @@ namespace {
 constexpr float kEpsilon = 0.0001f;
 
 renderer::Material testMaterial() {
-	return {{1.0f, 1.0f, 1.0f}, 0.0f, 1.0f, 0.0f, 1.0f};
+	return {{1.0f, 1.0f, 1.0f}};
 }
 
 renderer::Vertex vertex(renderer::vec4 position, renderer::vec3 color = {1.0f, 1.0f, 1.0f},
                         renderer::vec2 texcoord = {0.0f, 0.0f}) {
-	return {position, color, texcoord, renderer::xyz(position), {0.0f, 0.0f, 1.0f}};
+	return {position, color, texcoord};
 }
 
 renderer::Triangle triangle(renderer::Vertex a, renderer::Vertex b, renderer::Vertex c) {
 	return {a, b, c, testMaterial()};
+}
+
+std::filesystem::path sourcePath(const std::filesystem::path& relative_path) {
+	return std::filesystem::path(RENDERER_SOURCE_DIR) / relative_path;
 }
 
 void fail(const std::string& message) {
@@ -240,36 +246,34 @@ void testCameraMoveKeepsForwardPointCentered() {
 }
 
 void testRendererCullsBackFaces() {
-	const renderer::Material material{{1.0f, 0.0f, 0.0f}, 1.0f, 0.0f, 0.0f, 1.0f};
+	const renderer::Material material{{1.0f, 0.0f, 0.0f}};
 	const renderer::Camera camera(renderer::Fov{60.0f}, renderer::Aspect{1.0f},
 	                              renderer::NearPlane{0.1f}, renderer::FarPlane{100.0f},
 	                              {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, -1.0f});
-	const renderer::Lights lights({1.0f, 1.0f, 1.0f}, 1.0f);
 	const renderer::Renderer software_renderer(renderer::Width{20}, renderer::Height{20});
 
 	renderer::World front_world;
 	front_world.addTriangle(renderer::makeTriangle({-0.8f, -0.8f, -3.0f},
 	                                               {0.8f, -0.8f, -3.0f},
 	                                               {0.0f, 0.8f, -3.0f}, material));
-	const renderer::Picture front_picture = software_renderer.render(front_world, camera, lights);
+	const renderer::Picture front_picture = software_renderer.render(front_world, camera);
 	expectTrue(hasNonBlackPixel(front_picture), "front-facing triangle should be rendered");
 
 	renderer::World back_world;
 	back_world.addTriangle(renderer::makeTriangle({-0.8f, -0.8f, -3.0f},
 	                                              {0.0f, 0.8f, -3.0f},
 	                                              {0.8f, -0.8f, -3.0f}, material));
-	const renderer::Picture back_picture = software_renderer.render(back_world, camera, lights);
+	const renderer::Picture back_picture = software_renderer.render(back_world, camera);
 	expectTrue(!hasNonBlackPixel(back_picture), "back-facing triangle should be culled");
 }
 
 void testRendererPreservesMaterialTexture() {
-	renderer::Material material{{1.0f, 1.0f, 1.0f}, 1.0f, 0.0f, 0.0f, 1.0f};
+	renderer::Material material{{1.0f, 1.0f, 1.0f}};
 	material.texture = std::make_shared<renderer::Texture>(
 	    1, 1, std::vector<renderer::vec3>{{0.0f, 0.0f, 1.0f}});
 	const renderer::Camera camera(renderer::Fov{60.0f}, renderer::Aspect{1.0f},
 	                              renderer::NearPlane{0.1f}, renderer::FarPlane{100.0f},
 	                              {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, -1.0f});
-	const renderer::Lights lights({1.0f, 1.0f, 1.0f}, 1.0f);
 	const renderer::Renderer software_renderer(renderer::Width{20}, renderer::Height{20});
 
 	renderer::World world;
@@ -277,9 +281,20 @@ void testRendererPreservesMaterialTexture() {
 	                                         {0.8f, -0.8f, -3.0f},
 	                                         {0.0f, 0.8f, -3.0f}, material));
 
-	const renderer::Picture picture = software_renderer.render(world, camera, lights);
+	const renderer::Picture picture = software_renderer.render(world, camera);
 	expectTrue(hasBluishPixel(picture),
 	           "renderer should preserve material texture through projection");
+}
+
+void testAutoObjSceneRendersModel() {
+	const renderer::Scene scene =
+	    renderer::loadObjScene(sourcePath("assets/models/cube.obj"), renderer::Width{20},
+	                           renderer::Height{20});
+	const renderer::Renderer software_renderer(renderer::Width{20}, renderer::Height{20});
+
+	const renderer::Picture picture = software_renderer.render(scene.world, scene.camera);
+
+	expectTrue(hasNonBlackPixel(picture), "auto OBJ scene should render a visible model");
 }
 
 using Test = void (*)();
@@ -309,6 +324,7 @@ int main() {
 		        testCameraMoveKeepsForwardPointCentered);
 		runTest("renderer culls back faces", testRendererCullsBackFaces);
 		runTest("renderer preserves material texture", testRendererPreservesMaterialTexture);
+		runTest("auto OBJ scene renders model", testAutoObjSceneRendersModel);
 	} catch (const std::exception& exception) {
 		std::cerr << "[FAIL] " << exception.what() << '\n';
 		return 1;
